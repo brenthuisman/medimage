@@ -15,7 +15,7 @@ class image:
         self.crushed = False
         self.infile = infile
         self.path = os.path.split(infile)[0]
-        
+
         headerfile = open(infile,'r')
         self.header = OrderedDict()
         for line in headerfile:
@@ -23,13 +23,13 @@ class image:
             if len(newline)==0:
                 continue
             newline=[x.strip() for x in newline.split('=')]
-            
+
             try:
                 self.header[newline[0]]=newline[1]
             except IndexError: #line without '='
                 self.header[newline[0]]=None
             #at this point, header contains the full headerfile. now some prettyfication:
-            
+
             if 'CompressedData' in newline[0] and 'True' in newline[1]:
                 print("No valid input file (compressed).")
                 return
@@ -44,7 +44,7 @@ class image:
                 if 'MET_DOUBLE' in newline[1]:
                     self.datatype = '<f8'
                 if 'MET_UCHAR' in newline[1]:
-                    self.datatype = '<u1'	
+                    self.datatype = '<u1'
                 if 'MET_SHORT' in newline[1]:
                     self.datatype = '<i2'
                 if 'MET_INT' in newline[1]:
@@ -61,7 +61,7 @@ class image:
                 self.header['Offset'] = [Decimal(x) for x in newline[1].split()]
             if 'ElementSpacing' in newline[0]:
                 self.header['ElementSpacing'] = [Decimal(x) for x in newline[1].split()]
-            
+
         #print self.header['ElementDataFile'] #might have to replace with line below
         #self.inraw = infile[:-4]+".raw" #overwrite because of missing path
         if 'LIST' in self.header['ElementDataFile']:
@@ -81,7 +81,7 @@ class image:
         self.nrvox=reduce(lambda x, y: x*y, dim[:-1])
         #print dim,len(indata)
         self.imdata = np.reshape(indata,tuple(dim))
-        
+
         #correct for number of primaries.
         # try:
         # 	if 'var' in self.type:
@@ -98,7 +98,7 @@ class image:
 
         #https://en.wikipedia.org/wiki/Row-major_order, dus achterstevoren dimensies geven.
         print(self.infile,"loaded. Shape:",self.imdata.shape)
-        
+
 
     def __crush(self,crush):
         if self.crushed is True:
@@ -113,7 +113,7 @@ class image:
 
         crush=crush[::-1]
         self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
-        
+
         ax = [i for (i,j) in zip(list(range(len(crush))),crush) if j==1]
         self.imdata = np.add.reduce(self.imdata, axis=tuple(ax))
 
@@ -141,13 +141,13 @@ class image:
 
         crush=crush[::-1]
         self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
-        
+
         ax = [i for (i,j) in zip(list(range(len(crush))),crush) if j==1]
-        
+
         # argmax does not support tuple axes and casts to LONG.
         self.imdata = self.imdata.argmax(axis=ax[0])
         self.header['ElementType'] = 'MET_LONG'
-        
+
         self.crushed = True
         self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
         print("Image crush_argmax'ed. Shape:",self.imdata.shape)
@@ -191,7 +191,7 @@ class image:
             else:
                 newheadstr.append(str(k)+' = '+str(v))
         return newheadstr
-    
+
 
     def saveas(self,outpostfix):
         outraw = self.infile[:-4] + outpostfix + '.raw'
@@ -199,13 +199,13 @@ class image:
         if '/' in outraw:
             self.header['ElementDataFile'] = outraw.split('/')[-1]
         newheadfile = self.infile[:-4] + outpostfix + '.mhd'
-        
+
         # VV doesnt support long, so we convert to int
         if self.imdata.dtype == np.int64:
             self.imdata = self.imdata.astype(np.int32, copy=False)
             self.datatype = '<i4'
             self.header['ElementType'] = 'MET_INT'
-        
+
         #tofile is Row-major ('C' order), so that's why it happens to go correctly w.r.t. the HZYX order.
         self.imdata.tofile(outraw)
         print("New raw file:",outraw)
@@ -272,7 +272,7 @@ class image:
         if axis == 'x':
             #print((data[:,halfy,halfz]))
             return data[:,halfy,halfz]
-            return data[halfx,halfy,:] #swapped, as getslice
+            # return data[halfx,halfy,:] #swapped, as getslice
         if axis == 'y':
             #print((data[halfx,:,halfz]))
             return data[halfx,:,halfz]
@@ -280,12 +280,40 @@ class image:
             return data[halfx,halfy,:]
 
 
+    def getline_atindex(self,axis,index):
+        ''' getline_atindex only works for y index!!!!!!!!!!!!'''
+        data = self.imdata.reshape(self.imdata.shape[::-1])
+        halfx=int(self.header['DimSize'][2]/2.)
+        halfy=int(self.header['DimSize'][1]/2.)
+        halfz=int(self.header['DimSize'][0]/2.)
+        # halfx=int(index)
+        halfy=int(index)
+        # halfz=int(index)
+        print(halfx,halfy,halfz)
+        if axis == 'x':
+            return data[:,halfy,halfz]
+        if axis == 'y':
+            return data[halfx,:,halfz]
+        if axis == 'z':
+            return data[halfx,halfy,:]
+
+
+    def get_axis_mms(self,axis):
+        # omgekeerd...
+        if axis == 'z':
+            return [ float(self.header['Offset'][0]+pos*self.header['ElementSpacing'][0]) for pos in range(self.header['DimSize'][0]) ]
+        if axis == 'y':
+            return [ float(self.header['Offset'][1]+pos*self.header['ElementSpacing'][1]) for pos in range(self.header['DimSize'][1]) ]
+        if axis == 'x':
+            return [ float(self.header['Offset'][2]+pos*self.header['ElementSpacing'][2]) for pos in range(self.header['DimSize'][2]) ]
+
+
     def save1dlist(self,outpostfix,crush):
         # assert crush.count(0) is 1
 
         # crush=crush[::-1]
         # outdata = self.imdata.reshape(self.imdata.shape[::-1]).copy()
-        
+
         # ax = [i for (i,j) in zip(range(len(crush)),crush) if j==1]
         # outdata = np.add.reduce(outdata, axis=tuple(ax))
         outdata = self.get1dlist(crush)
@@ -293,7 +321,7 @@ class image:
         with open(outname,'w') as thefile:
             pickle.dump(outdata.tolist(), thefile)
         return outname
-        
+
 
     def getsum(self):
         return float(np.sum(self.imdata))
@@ -328,7 +356,7 @@ class image:
         print("New 4D mhd file:",newheadfile)
         print("This requires the original .raw file to be present.")
         return image(newheadfile)
-        
+
 
     def applyfake4dmask(self,postfix,*maskfiles):
         inname = self.infile
@@ -397,7 +425,7 @@ class image:
         shape = self.imdata.shape # so we can go back later
         self.imdata = self.imdata.flatten() #so that we have 1 index
         sortedindices = np.argsort(self.imdata) #, axis=None) #in case we didnt flatten
-        
+
         running_pc = 0.0
         target_pc = 0.9 * np.sum(self.imdata) #90% of total sum.
         index_90=len(self.imdata)-1 #we start at the bin with highest yield (end)
@@ -420,7 +448,7 @@ class image:
         shape = self.imdata.shape # so we can go back later
         self.imdata = self.imdata.flatten() #so that we have 1 index
         sortedindices = np.argsort(self.imdata) #, axis=None) #in case we didnt flatten
-        
+
         running_pc = 0.0
         target_pc = float(N)/100. * np.sum(self.imdata) #90% of total sum.
         index_90=len(self.imdata)-1 #we start at the bin with highest yield (end)
