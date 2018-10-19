@@ -14,7 +14,7 @@ from decimal import Decimal
            #- Two bytes containing ascii character 0x0c
            #- The Data in binary (high byte first, unless native is selected).
              #Or, if NKI_Compression is greater than zero, compressed data.
-           #- The Coordinates in binary IEEE float (high byte first, unless 
+           #- The Coordinates in binary IEEE float (high byte first, unless
              #native is selected)
 
 class xdrimage(image):
@@ -29,10 +29,10 @@ class xdrimage(image):
 			s = f.read()
 			border = s.find(b'\x0c\x0c')
 			header = s[0:border] #not sure this will work, because we read the file in binary
-		
+
 		# step 2: parse header
-		#TODO
-		
+		#TODO Parse header
+
 		# step 3: load image
 
 		dtype = np.dtype([
@@ -51,6 +51,6 @@ class xdrimage(image):
 		f.seek(border+2, os.SEEK_SET)
 
 		data = np.fromfile(f, dtype=dtype)
-		
+
 		#dt = big endian. also, only real/float (>f4) and short/short (>i2) for now.
 		self.imdata = np.fromfile(os.path.join(self.path,self.header['ElementDataFile']), dtype=dt)

@@ -238,7 +238,7 @@ class image:
     def get1dlist(self,crush):
         #sums all the dimensions set to crush.
         assert crush.count(0) is 1
-        pgbins = self.imdata.shape[-1]
+        #pgbins = self.imdata.shape[-1]
 
         crush=crush[::-1]
         outdata = self.imdata.copy()
@@ -280,32 +280,43 @@ class image:
             return data[halfx,halfy,:]
 
 
-    def getline_atindex(self,axis,index):
-        ''' getline_atindex only works for y index!!!!!!!!!!!!'''
+    def getline_atindex(self,axis,*args):
+        ''' DONT USE. args is de andere asses op volgorde. YOU MUST SWAP X,Z INDICES!!! '''
+        print('shape',self.imdata.shape)
+        print('*args',*args)
         data = self.imdata.reshape(self.imdata.shape[::-1])
-        halfx=int(self.header['DimSize'][2]/2.)
-        halfy=int(self.header['DimSize'][1]/2.)
-        halfz=int(self.header['DimSize'][0]/2.)
-        # halfx=int(index)
-        halfy=int(index)
-        # halfz=int(index)
-        print(halfx,halfy,halfz)
+        print('shape',data.shape)
         if axis == 'x':
-            return data[:,halfy,halfz]
+            return data[:,args[0],args[1]]
         if axis == 'y':
-            return data[halfx,:,halfz]
+            return data[args[0],:,args[1]]
         if axis == 'z':
-            return data[halfx,halfy,:]
+            return data[args[0],args[1],:]
 
 
     def get_axis_mms(self,axis):
-        # omgekeerd...
-        if axis == 'z':
+        # NIET omgekeerd...
+        # GEEN half pixel offset
+        if axis == 'x':
             return [ float(self.header['Offset'][0]+pos*self.header['ElementSpacing'][0]) for pos in range(self.header['DimSize'][0]) ]
         if axis == 'y':
             return [ float(self.header['Offset'][1]+pos*self.header['ElementSpacing'][1]) for pos in range(self.header['DimSize'][1]) ]
-        if axis == 'x':
+        if axis == 'z':
             return [ float(self.header['Offset'][2]+pos*self.header['ElementSpacing'][2]) for pos in range(self.header['DimSize'][2]) ]
+
+
+    def coord2index(self,coord):
+        assert(len(coord)==3)
+
+        x_x = [x for x in self.get_axis_mms('x')]
+        x_y = [x for x in self.get_axis_mms('y')]
+        x_z = [x for x in self.get_axis_mms('z')]
+
+        return [
+            min(range(len(x_x)), key=lambda i: abs(x_x[i]-coord[0])),
+            min(range(len(x_y)), key=lambda i: abs(x_y[i]-coord[1])),
+            min(range(len(x_z)), key=lambda i: abs(x_z[i]-coord[2])),
+        ]
 
 
     def save1dlist(self,outpostfix,crush):
