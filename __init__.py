@@ -1,102 +1,88 @@
 import numpy as np,pickle,subprocess,os
-from collections import OrderedDict
 from decimal import Decimal
 from functools import reduce
+from . import xdr
 
 #convention: save...() functions return string with filename.mhd of new file.
 
 class image:
     def __init__(self, infile, **kwargs):
-        assert infile.endswith('.mhd')
         for key in ('pps', 'nprim', 'type'):
             if key in kwargs:
                 setattr(self, key, kwargs[key])
 
         self.crushed = False
-        self.infile = infile
-        self.path = os.path.split(infile)[0]
+        self.path,self.infile = os.path.split(infile)
 
-        headerfile = open(infile,'r')
-        self.header = OrderedDict()
-        for line in headerfile:
-            newline = line.strip()
-            if len(newline)==0:
-                continue
-            newline=[x.strip() for x in newline.split('=')]
+        if infile.endswith('.mhd'):
+            headerfile = open(infile,'r')
+            self.header = {}
+            for line in headerfile:
+                newline = line.strip()
+                if len(newline)==0:
+                    continue
+                newline=[x.strip() for x in newline.split('=')]
 
-            try:
-                self.header[newline[0]]=newline[1]
-            except IndexError: #line without '='
-                self.header[newline[0]]=None
-            #at this point, header contains the full headerfile. now some prettyfication:
+                try:
+                    self.header[newline[0]]=newline[1]
+                except IndexError: #line without '='
+                    self.header[newline[0]]=None
+                #at this point, header contains the full headerfile. now some prettyfication:
 
-            if 'CompressedData' in newline[0] and 'True' in newline[1]:
-                print("No valid input file (compressed).")
-                return
-            if 'DimSize' in newline[0]:
-                self.header['DimSize'] = [int(x) for x in newline[1].split()]
-            #if 'ElementDataFile' in newline[0]:
-            #	inraw = newline[1]
-            if 'ElementType' in newline[0]:
-                self.header['ElementType'] = newline[1]
-                if 'MET_FLOAT' in newline[1]:
-                    self.datatype = '<f4'
-                if 'MET_DOUBLE' in newline[1]:
-                    self.datatype = '<f8'
-                if 'MET_UCHAR' in newline[1]:
-                    self.datatype = '<u1'
-                if 'MET_SHORT' in newline[1]:
-                    self.datatype = '<i2'
-                if 'MET_INT' in newline[1]:
-                    self.datatype = '<i4'
-                if 'MET_LONG' in newline[1]:
-                    self.datatype = '<i8'
-            if 'NDims' in newline[0]:
-                self.header['NDims'] = int(newline[1])
-            if 'TransformMatrix' in newline[0]:
-                self.header['TransformMatrix'] = [Decimal(x) for x in newline[1].split()]
-            if 'CenterOfRotation' in newline[0]:
-                self.header['CenterOfRotation'] = [Decimal(x) for x in newline[1].split()]
-            if 'Offset' in newline[0]:
-                self.header['Offset'] = [Decimal(x) for x in newline[1].split()]
-            if 'ElementSpacing' in newline[0]:
-                self.header['ElementSpacing'] = [Decimal(x) for x in newline[1].split()]
-
-        #print self.header['ElementDataFile'] #might have to replace with line below
-        #self.inraw = infile[:-4]+".raw" #overwrite because of missing path
-        if 'LIST' in self.header['ElementDataFile']:
-            print("We have a fake 4D file, assuming 3D...")
-            self.header['ElementDataFile'] = list(self.header.items())[-1][0]
-            self.header['NDims'] -= 1
-            self.header['DimSize'].pop()
-        self.__loadimage()
+                if 'CompressedData' in newline[0] and 'True' in newline[1]:
+                    print("No valid input file (compressed).")
+                    return
+                if 'DimSize' in newline[0]:
+                    self.header['DimSize'] = [int(x) for x in newline[1].split()]
+                #if 'ElementDataFile' in newline[0]:
+                #	inraw = newline[1]
+                if 'ElementType' in newline[0]:
+                    self.header['ElementType'] = newline[1]
+                    if 'MET_FLOAT' in newline[1]:
+                        self.datatype = '<f4'
+                    if 'MET_DOUBLE' in newline[1]:
+                        self.datatype = '<f8'
+                    if 'MET_UCHAR' in newline[1]:
+                        self.datatype = '<u1'
+                    if 'MET_SHORT' in newline[1]:
+                        self.datatype = '<i2'
+                    if 'MET_INT' in newline[1]:
+                        self.datatype = '<i4'
+                    if 'MET_LONG' in newline[1]:
+                        self.datatype = '<i8'
+                if 'NDims' in newline[0]:
+                    self.header['NDims'] = int(newline[1])
+                if 'TransformMatrix' in newline[0]:
+                    self.header['TransformMatrix'] = [float(x) for x in newline[1].split()]
+                if 'CenterOfRotation' in newline[0]:
+                    self.header['CenterOfRotation'] = [float(x) for x in newline[1].split()]
+                if 'Offset' in newline[0]:
+                    self.header['Offset'] = [float(x) for x in newline[1].split()]
+                if 'ElementSpacing' in newline[0]:
+                    self.header['ElementSpacing'] = [float(x) for x in newline[1].split()]
+            if 'LIST' in self.header['ElementDataFile']:
+                print("We have a fake 4D file, assuming 3D...")
+                self.header['ElementDataFile'] = list(self.header.items())[-1][0]
+                self.header['NDims'] -= 1
+                self.header['DimSize'].pop()
+            self.__loadimage()
+        elif infile.endswith('.xdr'):
+            self.header, self.imdata = xdr.read(infile)
+        else:
+            print("Unrecognized file extension, aborting.")
+            raise IOError()
 
 
     def __loadimage(self):
         #dt = '<f4' #np.dtype([('x','<f4'),('y','<f4'),('z','<f4'),('t','<f4')])
         dt = self.datatype
         dim = self.header['DimSize']
-        indata = np.fromfile(os.path.join(self.path,self.header['ElementDataFile']), dtype=dt)
+        # indata = np.fromfile(os.path.join(self.path,self.header['ElementDataFile']), dtype=dt)
+        indata = np.asarray(np.fromfile(os.path.join(self.path,self.header['ElementDataFile']), dtype=dt), order='F', dtype=dt)
         assert len(indata) == reduce(lambda x, y: x*y, dim)
-        self.nrvox=reduce(lambda x, y: x*y, dim[:-1])
-        #print dim,len(indata)
-        self.imdata = np.reshape(indata,tuple(dim))
-
-        #correct for number of primaries.
-        # try:
-        # 	if 'var' in self.type:
-        # 		self.imdata = self.imdata*(self.nprim**2)
-        # 	elif 'yield' in self.type:
-        # 		self.imdata = self.imdata*self.nprim
-        # except AttributeError:
-        # 	#nprim or type not set, no biggy
-        # 	pass
-
-        #opt: set inf and nan to zero
-        #self.imdata[self.imdata == np.inf] = 0
-        #self.imdata[self.imdata == np.nan] = 0
-
-        #https://en.wikipedia.org/wiki/Row-major_order, dus achterstevoren dimensies geven.
+        self.nrvox = len(indata)
+        # self.imdata = np.reshape(indata,dim)
+        self.imdata = indata.reshape(tuple(reversed(self.header['DimSize']))).swapaxes(0, self.header['NDims'] - 1)
         print(self.infile,"loaded. Shape:",self.imdata.shape)
 
 
@@ -172,8 +158,32 @@ class image:
             print("MHD doesnt support 1 dimensional images!")
             return
 
-
     def __getheaderasstring(self):
+        #Convert self.header to string
+        newhead = self.header.copy()
+        for item in ['DimSize','NDims','TransformMatrix','CenterOfRotation','Offset','ElementSpacing']:
+            #print self.header[item]
+            try:
+                newhead[item] = ' '.join(str(x) for x in self.header[item])
+            except TypeError:
+                newhead[item] = str(self.header[item])
+            except KeyError:
+                continue
+        #order appears important for vv
+        order = ['ObjectType','NDims','BinaryData','BinaryDataByteOrderMSB','CompressedData','TransformMatrix','Offset','CenterOfRotation','AnatomicalOrientation','ElementSpacing','DimSize','ElementType','ElementDataFile']
+        newheadstr = []
+        for item in order:
+            if item in newhead:
+                v = newhead[item]
+                if v is None:
+                    newheadstr.append(str(item))
+                else:
+                    newheadstr.append(str(item)+' = '+str(v))
+
+        return newheadstr
+
+
+    def __deprecated_getheaderasstring(self):
         #Convert self.header to string
         newhead = self.header.copy()
         for item in ['DimSize','NDims','TransformMatrix','CenterOfRotation','Offset','ElementSpacing']:
@@ -193,7 +203,40 @@ class image:
         return newheadstr
 
 
-    def saveas(self,outpostfix):
+    def saveas(self,filename=None):
+        if filename == None:
+            raise FileNotFoundError("You must specify a filename when you want to save!")
+        if len(filename.split(os.path.sep)) == 1: #so nothing to split, ie no dirs
+            self.infile = filename
+        else:
+            assert(os.path.isdir(filename.split()[0]))
+            self.path,self.infile = filename.split()
+        fullpath = os.path.join(self.path,self.infile)
+
+        # VV doesnt support long, so we convert to int
+        if self.imdata.dtype == np.int64:
+            self.imdata = self.imdata.astype(np.int32, copy=False)
+            self.datatype = '<i4'
+            self.header['ElementType'] = 'MET_INT'
+            print('MET_LONG not supported by many tools, so we autoconvert to MET_INT.')
+
+        if fullpath.endswith('.mhd'):
+            self.header['ElementDataFile'] = self.infile[:-4] + '.raw'
+            fulloutraw = fullpath[:-4] + '.raw'
+            #tofile is Row-major ('C' order), so that's why it happens to go correctly w.r.t. the HZYX order.
+            self.imdata.swapaxes(0, self.header['NDims'] - 1).tofile(fulloutraw)
+            print("New raw file:",fulloutraw)
+            with open(fullpath,'w+') as newheadf:
+                newheadf.writelines("%s\n" % l for l in self.__getheaderasstring())
+            print("New mhd file:",fullpath)
+        elif self.infile.endswith('.xdr'):
+            xdr.write()
+
+
+        return fullpath
+
+
+    def __deprecated_saveas(self,outpostfix):
         outraw = self.infile[:-4] + outpostfix + '.raw'
         self.header['ElementDataFile'] = outraw
         if '/' in outraw:
@@ -281,36 +324,38 @@ class image:
 
 
     def getline_atindex(self,axis,*args):
-        ''' DONT USE. args is de andere asses op volgorde. YOU MUST SWAP X,Z INDICES!!! '''
-        print('shape',self.imdata.shape)
+        ''' comment? '''
         print('*args',*args)
-        data = self.imdata.reshape(self.imdata.shape[::-1])
-        print('shape',data.shape)
         if axis == 'x':
-            return data[:,args[0],args[1]]
+            return self.imdata[:,args[0],args[1]]
         if axis == 'y':
-            return data[args[0],:,args[1]]
+            return self.imdata[args[0],:,args[1]]
         if axis == 'z':
-            return data[args[0],args[1],:]
+            return self.imdata[args[0],args[1],:]
 
 
-    def get_axis_mms(self,axis):
-        # NIET omgekeerd...
-        # GEEN half pixel offset
+    def get_axis_mms(self,axis,halfpixel=False):
+        # op pixelmiddens
+
+        # assen NIET omgekeerd...
+        if halfpixel:
+            hp=0.5
+        else:
+            hp=0.
         if axis == 'x':
-            return [ float(self.header['Offset'][0]+pos*self.header['ElementSpacing'][0]) for pos in range(self.header['DimSize'][0]) ]
+            return [ float(self.header['Offset'][0]+(pos-hp)*self.header['ElementSpacing'][0]) for pos in range(self.header['DimSize'][0]) ]
         if axis == 'y':
-            return [ float(self.header['Offset'][1]+pos*self.header['ElementSpacing'][1]) for pos in range(self.header['DimSize'][1]) ]
+            return [ float(self.header['Offset'][1]+(pos-hp)*self.header['ElementSpacing'][1]) for pos in range(self.header['DimSize'][1]) ]
         if axis == 'z':
-            return [ float(self.header['Offset'][2]+pos*self.header['ElementSpacing'][2]) for pos in range(self.header['DimSize'][2]) ]
+            return [ float(self.header['Offset'][2]+(pos-hp)*self.header['ElementSpacing'][2]) for pos in range(self.header['DimSize'][2]) ]
 
 
-    def coord2index(self,coord):
+    def coord2index(self,coord,halfpixel):
         assert(len(coord)==3)
 
-        x_x = [x for x in self.get_axis_mms('x')]
-        x_y = [x for x in self.get_axis_mms('y')]
-        x_z = [x for x in self.get_axis_mms('z')]
+        x_x = [x for x in self.get_axis_mms('x',halfpixel)]
+        x_y = [x for x in self.get_axis_mms('y',halfpixel)]
+        x_z = [x for x in self.get_axis_mms('z',halfpixel)]
 
         return [
             min(range(len(x_x)), key=lambda i: abs(x_x[i]-coord[0])),
