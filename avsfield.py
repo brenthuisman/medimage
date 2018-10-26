@@ -1,7 +1,5 @@
-from . import __init__
 '''
-`image` factory for AVSField files. Can also save `image`s to AVSfield.
-An AVSField is an XDR file with header (and may have a footer), roughly according to these specs:
+Read/write functionality for the AVS Field format. An AVSField is an XDR file with header (and may have a footer), roughly according to these specs:
 
 WRITE_XDR: Successively is written to file:
 	- The string '#AVS wants ...'.
@@ -24,53 +22,84 @@ Types:
 		case AVS_TYPE_INTEGER : strcpy(temp, "data=xdr_integer\n"); break;
 		case AVS_TYPE_REAL    : strcpy(temp, "data=xdr_real\n"); break;
 		case AVS_TYPE_DOUBLE  : strcpy(temp, "data=xdr_double\n"); break;
+      { case AVS_TYPE_BYTE    : strcpy(temp, "data=le_byte\n"); break;
+        case AVS_TYPE_SHORT   : strcpy(temp, "data=le_short\n"); break;
+        case AVS_TYPE_INTEGER : strcpy(temp, "data=le_integer\n"); break;
+        case AVS_TYPE_REAL    : strcpy(temp, "data=le_real\n"); break;
+        case AVS_TYPE_DOUBLE  : strcpy(temp, "data=le_double\n"); break;
 
-Most of this file is based on Grey Hills work available at <https://github.com/greyhill/avsfld>.
+This file is based on Grey Hills work available at <https://github.com/greyhill/avsfld>. Here, more complete header parsing and writing is added, and writing to the (presumably) default BE format is implemented. NO LE supports is implemented
 '''
 
-import ctypes
 import numpy as np
-import os
+from os import path
 import xdrlib
 import operator
-import sys
 from functools import reduce
 
-
-def write_ndarray(path, v):
-	'''
-	works for any ndarray
-	'''
-	path = os.path.expanduser(path)
+def write(self,path):
 	fid = open(path, 'wb')
 
 	lines = []
 	# write the ascii header
-	lines.append('# AVS field file (written by avsfld.py)\n')
-	ndim = len(v.shape)
+	lines.append('# AVS field file (written by avsfield.py)\n')
+	ndim = len(self.imdata.shape)
 	lines.append('ndim=%d\n' % ndim)
 	for d in range(ndim):
-		lines.append('dim%d=%d\n' % (d + 1, v.shape[d]))
+		lines.append('dim%d=%d\n' % (d + 1, self.imdata.shape[d]))
 	lines.append('nspace=%d\n' % ndim)
 	lines.append('veclen=1\n')
 
-	if v.dtype == ctypes.c_float:
-		lines.append('data=float_le\n')
+	if self.header['ElementType'] == 'MET_FLOAT':
+		lines.append('data=xdr_real\n')
+	elif self.header['ElementType'] == 'MET_DOUBLE':
+		lines.append('data=xdr_double\n')
+	elif self.header['ElementType'] == 'MET_SHORT':
+		lines.append('data=xdr_short\n')
+	elif self.header['ElementType'] == 'MET_INT':
+		lines.append('data=xdr_integer\n')
+	elif self.header['ElementType'] == 'MET_FLOAT':
+		lines.append('data=xdr_real\n')
+	elif self.header['ElementType'] == 'MET_UCHAR':
+		lines.append('data=byte\n')
 	else:
-		raise NotImplementedError('dtype %s not implemented' % str(v.dtype))
+		raise NotImplementedError('dtype %s not implemented' % str(self.imdata.dtype))
+
 	lines.append('field=uniform\n')
+
+	minarr = [x*0.1 for x in self.header['Offset']] # mm to cm
+	maxarr = [(o+(n-1)*bs)*0.1 for o,n,bs in zip(self.header['Offset'],self.imdata.shape,self.header['ElementSpacing'])]
+
+	## VV appears not to use this header, but the final 24 bytes (for 3D images).
+	lines.append('min_ext=')
+	lines.append(' '.join(["%.2f"%i for i in minarr]))
+	lines.append('\n')
+	lines.append('max_ext=')
+	lines.append(' '.join(["%.2f"%i for i in maxarr]))
+	lines.append('\n')
+
 	lines.append(chr(12)) #the magic two bytes
 	lines.append(chr(12))
 
 	lines = [l.encode('utf-8') for l in lines]
 
 	fid.writelines(lines)
-	fid.write(v.swapaxes(0, ndim - 1).tostring())
+	# write as BE with correct target datatype
+	targettype = '>'+self.imdata.dtype.char+str(self.imdata.dtype.itemsize)
+	self.imdata.swapaxes(0, ndim - 1).astype(targettype).tofile(fid)
+
+	#write extents, looped pairwise over axis
+	#xmin,xmax,ymin,ymax,zmin,zmax
+	exts = np.ndarray(shape=2*len(minarr), dtype='>f4')
+	for i,(mi,ma) in enumerate(zip(minarr,maxarr)):
+		exts[2*i] = mi
+		exts[2*i+1] = ma
+	exts.tofile(fid)
 	fid.close()
+	print("New xdr file:",path)
 
 
-def read(path):
-	path = os.path.expanduser(path)
+def read(self,path):
 	fid = open(path, 'rb')
 
 	# read the fld header
@@ -112,7 +141,7 @@ def read(path):
 	fname = None
 	if 'variable 1 file' in list(header.keys()):
 		fid.close()
-		p = os.path.dirname(path)
+		p=path
 		if p != '':
 			p = '%s/' % p
 		fname = '%s%s' % (p,
@@ -145,13 +174,6 @@ def read(path):
 		unpacked = unpacker.unpack_farray(size, unpacker.unpack_float)
 		raw_data = np.asarray(unpacked, order='F', dtype='<f4')
 		header['ElementType'] = 'MET_FLOAT'
-	elif header['data'] == 'float_le':
-		# LE = little endian, no need to do order='f'
-		if sys.byteorder != 'little':
-			raise NotImplementedError('byte-swapping not implemented')
-		raw_data = np.fromfile(fid, dtype=ctypes.c_float)
-		# raw_data = np.fromfile(fid, dtype='<f4') # TODO: replace ctypes
-		header['ElementType'] = 'MET_FLOAT_LE' # TODO UNKNOWN IF THIS WORKS
 	elif header['data'] == 'byte':
 				# bytesize is both LE and BE!
 		raw_data = np.fromfile(fid, dtype='uint8')
@@ -162,13 +184,14 @@ def read(path):
 
 	fid.close()
 
-	return __image_header(path,header), raw_data.reshape(tuple(reversed(shape))).swapaxes(0, ndim - 1)
+	self.header = __build_header(path,header)
+	self.imdata = raw_data.reshape(tuple(reversed(shape))).swapaxes(0, ndim - 1)
 
 
-def __image_header(path,xdrheader):
+def __build_header(path,xdrheader):
 	newh = {}
 	newh['ObjectType'] = 'Image'
-	newh['ElementDataFile'] = os.path.basename(path.replace('.xdr','.raw')) #je moet toch wat
+	newh['ElementDataFile'] = '' #je moet toch wat
 	newh['CompressedData'] = False
 	newh['DimSize'] = xdrheader['DimSize']
 	newh['ElementType'] = xdrheader['ElementType']
@@ -180,9 +203,6 @@ def __image_header(path,xdrheader):
 		# nbin-1 because bincenter to bincenter, *10 to go to mm.
 		newh['ElementSpacing'].append((maxx-minn)/float(nbin-1)*10.)
 
-	# print(newh)
-
-	# TODOs:
 	# BinaryData = True
 	# BinaryDataByteOrderMSB = False
 	# CenterOfRotation = 0 0 0

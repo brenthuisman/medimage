@@ -1,89 +1,36 @@
+'''
+This is an image library facilitating working with n dimensional images. The typical usecase is working with medical images, where you might want to slice, plot profiles, analyze, mask, or otherwise process medical image data. The imagedata is an ndarray, so it's very usable and extensible for all that are familiar with numpy.
+
+The interal header info, keeping track of dimensions, which ndarrays don't do, is structured as in the MetaImage format, which you only need to know if you extend this library.
+
+I started writing this lib because the Python bindings of ITK were difficult to install at the time (pre-simpleITK) and frankly the ITK API was and is very convoluted for the relatively simple things I wished and wish to do. Since I am very comfortable with the numpy library and the ndarray API, and the very simple data format of MetaImage I quickly could write a basic reader and writer, and from that the library sprawled to fit my needs. In my postdoc, I upgraded the library to Python 3, removed ROOT dependencies, and started a cleanup of the API, fixing a basic indexing issue that was always present and added AVSFIELD/XDR read/write support.
+'''
+
 import numpy as np,pickle,subprocess,os
 from decimal import Decimal
 from functools import reduce
-from . import xdr
-
-#convention: save...() functions return string with filename.mhd of new file.
+from . import avsfield
+from . import metaimage
 
 class image:
     def __init__(self, infile, **kwargs):
-        for key in ('pps', 'nprim', 'type'):
-            if key in kwargs:
-                setattr(self, key, kwargs[key])
+        self.path,self.file = os.path.split(infile)
 
-        self.crushed = False
-        self.path,self.infile = os.path.split(infile)
+        for k,v in kwargs:
+            setattr(self, k, v)
 
+        # TODO copy "constructor"
         if infile.endswith('.mhd'):
-            headerfile = open(infile,'r')
-            self.header = {}
-            for line in headerfile:
-                newline = line.strip()
-                if len(newline)==0:
-                    continue
-                newline=[x.strip() for x in newline.split('=')]
-
-                try:
-                    self.header[newline[0]]=newline[1]
-                except IndexError: #line without '='
-                    self.header[newline[0]]=None
-                #at this point, header contains the full headerfile. now some prettyfication:
-
-                if 'CompressedData' in newline[0] and 'True' in newline[1]:
-                    print("No valid input file (compressed).")
-                    return
-                if 'DimSize' in newline[0]:
-                    self.header['DimSize'] = [int(x) for x in newline[1].split()]
-                #if 'ElementDataFile' in newline[0]:
-                #	inraw = newline[1]
-                if 'ElementType' in newline[0]:
-                    self.header['ElementType'] = newline[1]
-                    if 'MET_FLOAT' in newline[1]:
-                        self.datatype = '<f4'
-                    if 'MET_DOUBLE' in newline[1]:
-                        self.datatype = '<f8'
-                    if 'MET_UCHAR' in newline[1]:
-                        self.datatype = '<u1'
-                    if 'MET_SHORT' in newline[1]:
-                        self.datatype = '<i2'
-                    if 'MET_INT' in newline[1]:
-                        self.datatype = '<i4'
-                    if 'MET_LONG' in newline[1]:
-                        self.datatype = '<i8'
-                if 'NDims' in newline[0]:
-                    self.header['NDims'] = int(newline[1])
-                if 'TransformMatrix' in newline[0]:
-                    self.header['TransformMatrix'] = [float(x) for x in newline[1].split()]
-                if 'CenterOfRotation' in newline[0]:
-                    self.header['CenterOfRotation'] = [float(x) for x in newline[1].split()]
-                if 'Offset' in newline[0]:
-                    self.header['Offset'] = [float(x) for x in newline[1].split()]
-                if 'ElementSpacing' in newline[0]:
-                    self.header['ElementSpacing'] = [float(x) for x in newline[1].split()]
-            if 'LIST' in self.header['ElementDataFile']:
-                print("We have a fake 4D file, assuming 3D...")
-                self.header['ElementDataFile'] = list(self.header.items())[-1][0]
-                self.header['NDims'] -= 1
-                self.header['DimSize'].pop()
-            self.__loadimage()
+            assert(os.path.isfile(infile))
+            metaimage.read(self,infile)
         elif infile.endswith('.xdr'):
-            self.header, self.imdata = xdr.read(infile)
+            assert(os.path.isfile(infile))
+            avsfield.read(self,infile)
         else:
             print("Unrecognized file extension, aborting.")
             raise IOError()
 
-
-    def __loadimage(self):
-        #dt = '<f4' #np.dtype([('x','<f4'),('y','<f4'),('z','<f4'),('t','<f4')])
-        dt = self.datatype
-        dim = self.header['DimSize']
-        # indata = np.fromfile(os.path.join(self.path,self.header['ElementDataFile']), dtype=dt)
-        indata = np.asarray(np.fromfile(os.path.join(self.path,self.header['ElementDataFile']), dtype=dt), order='F', dtype=dt)
-        assert len(indata) == reduce(lambda x, y: x*y, dim)
-        self.nrvox = len(indata)
-        # self.imdata = np.reshape(indata,dim)
-        self.imdata = indata.reshape(tuple(reversed(self.header['DimSize']))).swapaxes(0, self.header['NDims'] - 1)
-        print(self.infile,"loaded. Shape:",self.imdata.shape)
+        print(self.file,"loaded. Shape:",self.imdata.shape)
 
 
     def __crush(self,crush):
@@ -144,9 +91,7 @@ class image:
         self.header['DimSize'] = [i for (i,j) in zip(self.header['DimSize'],crush) if j==0]
         self.header['Offset'] = [i for (i,j) in zip(self.header['Offset'],crush) if j==0]
         self.header['ElementSpacing'] = [i for (i,j) in zip(self.header['ElementSpacing'],crush) if j==0]
-        self.header['ElementDataFile'] = self.infile[:-4] + outpostfix + '.raw'
-
-        #print self.header['ElementDataFile']
+        self.header['ElementDataFile'] = self.file[:-4] + outpostfix + '.raw'
 
         try:
             self.header.pop('TransformMatrix') #FIXME: if ever needed.
@@ -158,60 +103,16 @@ class image:
             print("MHD doesnt support 1 dimensional images!")
             return
 
-    def __getheaderasstring(self):
-        #Convert self.header to string
-        newhead = self.header.copy()
-        for item in ['DimSize','NDims','TransformMatrix','CenterOfRotation','Offset','ElementSpacing']:
-            #print self.header[item]
-            try:
-                newhead[item] = ' '.join(str(x) for x in self.header[item])
-            except TypeError:
-                newhead[item] = str(self.header[item])
-            except KeyError:
-                continue
-        #order appears important for vv
-        order = ['ObjectType','NDims','BinaryData','BinaryDataByteOrderMSB','CompressedData','TransformMatrix','Offset','CenterOfRotation','AnatomicalOrientation','ElementSpacing','DimSize','ElementType','ElementDataFile']
-        newheadstr = []
-        for item in order:
-            if item in newhead:
-                v = newhead[item]
-                if v is None:
-                    newheadstr.append(str(item))
-                else:
-                    newheadstr.append(str(item)+' = '+str(v))
-
-        return newheadstr
-
-
-    def __deprecated_getheaderasstring(self):
-        #Convert self.header to string
-        newhead = self.header.copy()
-        for item in ['DimSize','NDims','TransformMatrix','CenterOfRotation','Offset','ElementSpacing']:
-            #print self.header[item]
-            try:
-                newhead[item] = ' '.join(str(x) for x in self.header[item])
-            except TypeError:
-                newhead[item] = str(self.header[item])
-            except KeyError:
-                continue
-        newheadstr = []
-        for k,v in list(newhead.items()):
-            if v is None:
-                newheadstr.append(str(k))
-            else:
-                newheadstr.append(str(k)+' = '+str(v))
-        return newheadstr
-
 
     def saveas(self,filename=None):
         if filename == None:
             raise FileNotFoundError("You must specify a filename when you want to save!")
         if len(filename.split(os.path.sep)) == 1: #so nothing to split, ie no dirs
-            self.infile = filename
+            self.file = filename
         else:
             assert(os.path.isdir(filename.split()[0]))
-            self.path,self.infile = filename.split()
-        fullpath = os.path.join(self.path,self.infile)
+            self.path,self.file = filename.split()
+        fullpath = os.path.join(self.path,self.file)
 
         # VV doesnt support long, so we convert to int
         if self.imdata.dtype == np.int64:
@@ -221,43 +122,11 @@ class image:
             print('MET_LONG not supported by many tools, so we autoconvert to MET_INT.')
 
         if fullpath.endswith('.mhd'):
-            self.header['ElementDataFile'] = self.infile[:-4] + '.raw'
-            fulloutraw = fullpath[:-4] + '.raw'
-            #tofile is Row-major ('C' order), so that's why it happens to go correctly w.r.t. the HZYX order.
-            self.imdata.swapaxes(0, self.header['NDims'] - 1).tofile(fulloutraw)
-            print("New raw file:",fulloutraw)
-            with open(fullpath,'w+') as newheadf:
-                newheadf.writelines("%s\n" % l for l in self.__getheaderasstring())
-            print("New mhd file:",fullpath)
-        elif self.infile.endswith('.xdr'):
-            xdr.write()
-
+            metaimage.write(self,fullpath)
+        elif self.file.endswith('.xdr'):
+            avsfield.write(self,fullpath)
 
         return fullpath
-
-
-    def __deprecated_saveas(self,outpostfix):
-        outraw = self.infile[:-4] + outpostfix + '.raw'
-        self.header['ElementDataFile'] = outraw
-        if '/' in outraw:
-            self.header['ElementDataFile'] = outraw.split('/')[-1]
-        newheadfile = self.infile[:-4] + outpostfix + '.mhd'
-
-        # VV doesnt support long, so we convert to int
-        if self.imdata.dtype == np.int64:
-            self.imdata = self.imdata.astype(np.int32, copy=False)
-            self.datatype = '<i4'
-            self.header['ElementType'] = 'MET_INT'
-
-        #tofile is Row-major ('C' order), so that's why it happens to go correctly w.r.t. the HZYX order.
-        self.imdata.tofile(outraw)
-        print("New raw file:",outraw)
-        if self.header['NDims'] is not 1:
-            self.header['TotalSum'] = self.imdata.sum()
-            with open(newheadfile,'w+') as newheadf:
-                newheadf.writelines("%s\n" % l for l in self.__getheaderasstring())
-            print("New mhd file:",newheadfile)
-        return newheadfile
 
 
     def toprojection(self,outpostfix,crush):
@@ -373,7 +242,7 @@ class image:
         # ax = [i for (i,j) in zip(range(len(crush)),crush) if j==1]
         # outdata = np.add.reduce(outdata, axis=tuple(ax))
         outdata = self.get1dlist(crush)
-        outname = self.infile[:-4] + outpostfix
+        outname = self.file[:-4] + outpostfix
         with open(outname,'w') as thefile:
             pickle.dump(outdata.tolist(), thefile)
         return outname
@@ -384,7 +253,7 @@ class image:
 
 
     def savesum(self,outpostfix):
-        outname = self.infile[:-4] + outpostfix
+        outname = self.file[:-4] + outpostfix
         with open(outname,'w') as thefile:
             pickle.dump(self.getsum(), thefile)
         return outname
@@ -406,7 +275,7 @@ class image:
         newhead = self.__getheaderasstring()
         for i in range(binsInNewDim):
             newhead.append(inraw)
-        newheadfile = self.infile[:-4]+'4d.mhd'
+        newheadfile = self.file[:-4]+'4d.mhd'
         with open(newheadfile,'w+') as newheadf:
             newheadf.writelines("%s\n" % l for l in newhead)
         print("New 4D mhd file:",newheadfile)
@@ -415,8 +284,8 @@ class image:
 
 
     def applyfake4dmask(self,postfix,*maskfiles):
-        inname = self.infile
-        outname = self.infile[:-4]+str(postfix)+'.mhd'
+        inname = self.file
+        outname = self.file[:-4]+str(postfix)+'.mhd'
         #print outname
         for maskfile in maskfiles:
             subprocess.call(['clitkImageArithm','-t 1','-i',inname,'-j',maskfile,'-o',outname])
@@ -426,8 +295,8 @@ class image:
 
 
     def applymask_clitk(self,postfix,maskfile,p=0.):
-        inname = self.infile
-        outname = self.infile[:-4]+str(postfix)+'.mhd'
+        inname = self.file
+        outname = self.file[:-4]+str(postfix)+'.mhd'
         subprocess.call(['clitkSetBackground','-i',inname,'-m',maskfile,'-o',outname,'-p',str(p)])
         #os.popen("clitkSetBackground -i "+inname+" -m "+maskfile+" -o "+outname)
         print("New mhd file:",outname)
