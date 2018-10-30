@@ -28,7 +28,7 @@ Types:
         case AVS_TYPE_REAL    : strcpy(temp, "data=le_real\n"); break;
         case AVS_TYPE_DOUBLE  : strcpy(temp, "data=le_double\n"); break;
 
-This file is based on Grey Hills work available at <https://github.com/greyhill/avsfld>. Here, more complete header parsing and writing is added, and writing to the (presumably) default BE format is implemented. NO LE supports is implemented
+This file is based on Grey Hills work available at <https://github.com/greyhill/avsfld>. Here, more complete header parsing and writing is added (extents), and writing to the (presumably) default BE format is implemented. NO LE support is implemented, as I can't test it.
 '''
 
 import numpy as np
