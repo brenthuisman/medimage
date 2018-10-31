@@ -1,6 +1,7 @@
 '''
 Read/write functionality for the AVS Field format. An AVSField is an XDR file with header (and may have a footer), roughly according to these specs:
 
+source: http://vis.lbl.gov/archive/NERSC/Software/express/help6.2/help/reference/dvmac/Fiel0066.htm
 WRITE_XDR: Successively is written to file:
 	- The string '#AVS wants ...'.
 	- The optional Header info
@@ -30,7 +31,11 @@ Types:
 
 AVSField header parsing is based on Grey Hills work available at <https://github.com/greyhill/avsfld>. Here, more complete header parsing and writing is added (extents), and writing to the (presumably) default BE format is implemented. xdrlib dependency is removed, as numpy reads and writes much faster.
 
-NO LE support is implemented, as I can't test it.
+Not supported:
+* LE images (easily added, pull requests welcome)
+* unportable types (i.e. data=float means machine specific endianness)
+* veclen =/= 1 (i.e. RGB per voxel) (easily added, pull requests welcome)
+* nonuniform images
 '''
 
 import numpy as np
@@ -43,7 +48,7 @@ def write(self,path):
 
 	lines = []
 	# write the ascii header
-	lines.append('# AVS field file (written by avsfield.py)\n')
+	lines.append('# AVS field file (written by io_avsfield.py)\n')
 	ndim = len(self.imdata.shape)
 	lines.append('ndim=%d\n' % ndim)
 	for d in range(ndim):
@@ -71,12 +76,12 @@ def write(self,path):
 	minarr = [x*0.1 for x in self.header['Offset']] # mm to cm
 	maxarr = [(o+(n-1)*bs)*0.1 for o,n,bs in zip(self.header['Offset'],self.imdata.shape,self.header['ElementSpacing'])]
 
-	## VV appears not to use this header, but the final 24 bytes (for 3D images).
+	## exts in header included for NKI
 	lines.append('min_ext=')
-	lines.append(' '.join(["%.2f"%i for i in minarr]))
+	lines.append(' '.join(["%.5f"%i for i in minarr]))
 	lines.append('\n')
 	lines.append('max_ext=')
-	lines.append(' '.join(["%.2f"%i for i in maxarr]))
+	lines.append(' '.join(["%.5f"%i for i in maxarr]))
 	lines.append('\n')
 
 	lines.append(chr(12)) #the magic two bytes
@@ -150,7 +155,7 @@ def read(self,path):
 						  header['variable 1 file'].split(' ')[0])
 		fid = open(fname, 'rb')
 
-	if header['data'] == 'xdr_real':  # same as xdr_float, but at NKI only real is used
+	if header['data'] in ['xdr_real','xdr_float']:
 		raw_data = np.asarray(np.fromfile(fid, dtype='>f4', count=size), order='F', dtype='<f4')
 		header['ElementType'] = 'MET_FLOAT'
 	elif header['data'] == 'xdr_double':
@@ -162,9 +167,6 @@ def read(self,path):
 	elif header['data'] == 'xdr_integer':
 		raw_data = np.asarray(np.fromfile(fid, dtype='>i4', count=size), order='F', dtype='<i4')
 		header['ElementType'] = 'MET_INT'
-	elif header['data'] == 'xdr_float':
-		raw_data = np.asarray(np.fromfile(fid, dtype='>f4', count=size), order='F', dtype='<f4')
-		header['ElementType'] = 'MET_FLOAT'
 	elif header['data'] == 'byte':
 		# bytesize is both LE and BE!
 		raw_data = np.fromfile(fid, dtype='uint8')
@@ -172,6 +174,16 @@ def read(self,path):
 	else:
 		raise NotImplementedError(
 			'datatype %s not implemented' % header['data'])
+
+	#overwrite the header if it was ever present, AVSField standard mandates extents as final bytes, not header.
+	header['min_ext'] = []
+	header['max_ext'] = []
+
+	for _ in range(ndim):
+		header['min_ext'].append(np.fromfile(fid, dtype='>f4', count=1)[0])
+		header['max_ext'].append(np.fromfile(fid, dtype='>f4', count=1)[0])
+
+	assert ndim == len(header['min_ext']) == len(header['max_ext'])
 
 	fid.close()
 
@@ -188,9 +200,9 @@ def __build_header(path,xdrheader):
 	newh['ElementType'] = xdrheader['ElementType']
 	newh['TransformMatrix'] = [float(x) for x in '1 0 0 0 1 0 0 0 1'.split()]
 	newh['NDims'] = int(xdrheader['ndim'])
-	newh['Offset'] = [float(x)*10. for x in xdrheader['min_ext'].split()]
+	newh['Offset'] = [x*10. for x in xdrheader['min_ext']]
 	newh['ElementSpacing'] = []
-	for minn,maxx,nbin in zip([float(x) for x in xdrheader['min_ext'].split()],[float(x) for x in xdrheader['max_ext'].split()],xdrheader['DimSize']):
+	for minn,maxx,nbin in zip(xdrheader['min_ext'],xdrheader['max_ext'],xdrheader['DimSize']):
 		# nbin-1 because bincenter to bincenter, *10 to go to mm.
 		newh['ElementSpacing'].append((maxx-minn)/float(nbin-1)*10.)
 

@@ -74,7 +74,7 @@ class image(math_class,mask_class):
         return axes
 
 
-    def get_pixel_index(self,coord,halfpixel=True):
+    def get_pixel_index(self,coord,halfpixel=False):
         ''' get pixel at coord'''
         assert(len(coord)==3)
 
