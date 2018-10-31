@@ -28,12 +28,13 @@ Types:
         case AVS_TYPE_REAL    : strcpy(temp, "data=le_real\n"); break;
         case AVS_TYPE_DOUBLE  : strcpy(temp, "data=le_double\n"); break;
 
-This file is based on Grey Hills work available at <https://github.com/greyhill/avsfld>. Here, more complete header parsing and writing is added (extents), and writing to the (presumably) default BE format is implemented. NO LE support is implemented, as I can't test it.
+AVSField header parsing is based on Grey Hills work available at <https://github.com/greyhill/avsfld>. Here, more complete header parsing and writing is added (extents), and writing to the (presumably) default BE format is implemented. xdrlib dependency is removed, as numpy reads and writes much faster.
+
+NO LE support is implemented, as I can't test it.
 '''
 
 import numpy as np
 from os import path
-import xdrlib
 import operator
 from functools import reduce
 
@@ -100,6 +101,7 @@ def write(self,path):
 
 
 def read(self,path):
+	''' currently extents are read from ascii header, not final bytes! those are skipped. '''
 	fid = open(path, 'rb')
 
 	# read the fld header
@@ -149,33 +151,22 @@ def read(self,path):
 		fid = open(fname, 'rb')
 
 	if header['data'] == 'xdr_real':  # same as xdr_float, but at NKI only real is used
-		unpacker = xdrlib.Unpacker(fid.read())
-		unpacked = unpacker.unpack_farray(size, unpacker.unpack_float)
-		raw_data = np.asarray(unpacked, order='F', dtype='<f4')
+		raw_data = np.asarray(np.fromfile(fid, dtype='>f4', count=size), order='F', dtype='<f4')
 		header['ElementType'] = 'MET_FLOAT'
 	elif header['data'] == 'xdr_double':
-		unpacker = xdrlib.Unpacker(fid.read())
-		unpacked = unpacker.unpack_farray(size, unpacker.unpack_float)
-		raw_data = np.asarray(unpacked, order='F', dtype='<f8')
+		raw_data = np.asarray(np.fromfile(fid, dtype='>f8', count=size), order='F', dtype='<f8')
 		header['ElementType'] = 'MET_DOUBLE'
 	elif header['data'] == 'xdr_short':
-		unpacker = xdrlib.Unpacker(fid.read())
-		unpacked = unpacker.unpack_farray(size, unpacker.unpack_float)
-		raw_data = np.asarray(unpacked, order='F', dtype='<i2')
+		raw_data = np.asarray(np.fromfile(fid, dtype='>i2', count=size), order='F', dtype='<i2')
 		header['ElementType'] = 'MET_SHORT'
 	elif header['data'] == 'xdr_integer':
-		unpacker = xdrlib.Unpacker(fid.read())
-		unpacked = unpacker.unpack_farray(size, unpacker.unpack_float)
-		raw_data = np.asarray(unpacked, order='F', dtype='<i4')
+		raw_data = np.asarray(np.fromfile(fid, dtype='>i4', count=size), order='F', dtype='<i4')
 		header['ElementType'] = 'MET_INT'
 	elif header['data'] == 'xdr_float':
-		# slow path
-		unpacker = xdrlib.Unpacker(fid.read())
-		unpacked = unpacker.unpack_farray(size, unpacker.unpack_float)
-		raw_data = np.asarray(unpacked, order='F', dtype='<f4')
+		raw_data = np.asarray(np.fromfile(fid, dtype='>f4', count=size), order='F', dtype='<f4')
 		header['ElementType'] = 'MET_FLOAT'
 	elif header['data'] == 'byte':
-				# bytesize is both LE and BE!
+		# bytesize is both LE and BE!
 		raw_data = np.fromfile(fid, dtype='uint8')
 		header['ElementType'] = 'MET_UCHAR'
 	else:
