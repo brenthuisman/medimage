@@ -198,8 +198,8 @@ def __build_header(path,xdrheader):
 	newh['CompressedData'] = False
 	newh['DimSize'] = xdrheader['DimSize']
 	newh['ElementType'] = xdrheader['ElementType']
-	newh['TransformMatrix'] = [float(x) for x in '1 0 0 0 1 0 0 0 1'.split()]
 	newh['NDims'] = int(xdrheader['ndim'])
+	newh['TransformMatrix'] =  np.identity(newh['NDims']).flatten().tolist() # FIXME: read AVS transform from header or external field if present/provided.
 	newh['Offset'] = [x*10. for x in xdrheader['min_ext']]
 	newh['ElementSpacing'] = []
 	for minn,maxx,nbin in zip(xdrheader['min_ext'],xdrheader['max_ext'],xdrheader['DimSize']):

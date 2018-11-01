@@ -43,8 +43,8 @@ class image(math_class,mask_class):
         if len(filename.split(path.sep)) == 1: #so nothing to split, ie no dirs
             self.file = filename
         else:
-            assert(path.isdir(filename.split()[0]))
-            self.path,self.file = filename.split()
+            assert(path.isdir(path.split(filename)[0]))
+            self.path,self.file = path.split(filename)
         fullpath = path.join(self.path,self.file)
 
         # VV doesnt support long, so we convert to int
