@@ -75,16 +75,10 @@ class image(math_class,mask_class):
 
 
     def get_pixel_index(self,coord,halfpixel=False):
-        ''' get pixel at coord'''
-        assert(len(coord)==3)
-
-        x_x,x_y,x_z = self.get_axes_labels(halfpixel)
-
-        return [
-            min(range(len(x_x)), key=lambda i: abs(x_x[i]-coord[0])),
-            min(range(len(x_y)), key=lambda i: abs(x_y[i]-coord[1])),
-            min(range(len(x_z)), key=lambda i: abs(x_z[i]-coord[2])),
-        ]
+        ''' get pixel at coord '''
+        assert(len(coord)==len(self.imdata.shape))
+        axl = self.get_axes_labels(halfpixel)
+        return [min(range(len(axli)), key=lambda i: abs(axli[i]-coor)) for axli,coor in zip(axl,coord)]
 
 
     def get_profiles_at_index(self,idx):
@@ -97,21 +91,6 @@ class image(math_class,mask_class):
             idx_copy = idx[:]
             del idx_copy[axi]
             idx_copy = tuple(idx_copy)
-            # print(idx_copy)
             profile = np.moveaxis(self.imdata,axi,-1)[idx_copy]
-            # print(np.moveaxis(self.imdata,axi,-1).shape) #rollaxis didnt work correctly!
-            # print(len(profile))
             profiles.append(profile)
         return profiles
-
-
-    def get_line_atindex(self,axis,*args):
-        ''' comment? '''
-        print('*args',*args)
-        if axis == 'x':
-            return self.imdata[:,args[0],args[1]]
-        if axis == 'y':
-            return self.imdata[args[0],:,args[1]]
-        if axis == 'z':
-            return self.imdata[args[0],args[1],:]
-
