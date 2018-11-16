@@ -23,7 +23,6 @@ class image(math_class,mask_class):
         for k,v in kwargs:
             setattr(self, k, v)
 
-        # TODO copy "constructor"
         if infile.endswith('.mhd'):
             assert(path.isfile(infile))
             io_metaimage.read(self,infile)

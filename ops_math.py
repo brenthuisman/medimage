@@ -1,13 +1,26 @@
 import numpy as np
 
 class math_class:
-    def getsum(self):
-        return np.sum(self.imdata)
+    def size(self):
+        return self.imdata.size
 
+    def sum(self):
+        return np.ma.sum(self.imdata)
 
-    def getmean(self):
-        #return np.mean(self.imdata)
-        return np.mean(self.imdata[self.imdata.nonzero()])
+    def max(self):
+        return np.ma.max(self.imdata)
+
+    def min(self):
+        return np.ma.min(self.imdata)
+
+    def mean(self):
+        return np.ma.mean(self.imdata)
+
+    def mean_excl_zero(self):
+        return np.ma.mean(self.imdata[self.imdata.nonzero()])
+
+    def median(self):
+        return np.ma.median(self.imdata)
 
 
     def smudge(self,mskval,frac=1.):
@@ -47,3 +60,16 @@ class math_class:
     def getlowest(self):
         '''get index of lowest value in image'''
         return list(np.unravel_index(np.nanargmin(self.imdata),self.imdata.shape))
+
+
+    def calc_gamma(self,other,dta,dd):
+        assert type(other)==type(self)
+
+        dd = dd * self.imdata.max()
+
+        from npgamma import calc_gamma
+
+        retval = self.copy()
+        retval.imdata = calc_gamma(tuple(self.get_axes_labels()), self.imdata,tuple(other.get_axes_labels()), other.imdata, dta, dd, 0, dta / 3, dta*2, np.inf, 16)
+        return retval
+
