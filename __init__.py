@@ -6,7 +6,7 @@ The interal header info, keeping track of dimensions, which ndarrays don't do, i
 I started writing this lib because the Python bindings of ITK were difficult to install at the time (pre-simpleITK) and frankly the ITK API was and is very convoluted for the relatively simple things I wished and wish to do. Since I am very comfortable with the numpy library and the ndarray API, and the very simple data format of MetaImage I quickly could write a basic reader and writer, and from that the library sprawled to fit my needs. In my postdoc, I upgraded the library to Python 3, removed ROOT dependencies, and started a cleanup of the API, fixing a basic indexing issue that was always present and added AVSFIELD/XDR read/write support.
 '''
 
-import numpy as np,scipy
+import numpy as np,copy
 from os import path
 from functools import reduce
 from . import io_avsfield
@@ -37,7 +37,13 @@ class image(math_class,mask_class):
         print(self.file,"loaded. Shape:",self.imdata.shape)
 
 
-    def saveas(self,filename=None):
+    def copy(self):
+        return copy.deepcopy(self)
+
+
+    def saveas(self,filename=None,fillval=0):
+        ''' If you applied any masks, these voxels will be set to zero unless you set fillval. '''
+
         if filename == None:
             raise FileNotFoundError("You must specify a filename when you want to save!")
         if len(filename.split(path.sep)) == 1: #so nothing to split, ie no dirs
@@ -53,6 +59,10 @@ class image(math_class,mask_class):
             self.datatype = '<i4'
             self.header['ElementType'] = 'MET_INT'
             print('MET_LONG not supported by many tools, so we autoconvert to MET_INT.')
+
+        if type(self.imdata) == np.ma.core.MaskedArray:
+            print("Your masked array was squashed with the masked voxels set to",fillval)
+            self.imdata = self.imdata.filled(fillval)
 
         if fullpath.endswith('.mhd'):
             io_metaimage.write(self,fullpath)
