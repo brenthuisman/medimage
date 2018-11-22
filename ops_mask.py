@@ -34,7 +34,7 @@ class mask_class:
         ''' Applies the mask(s) you specify to imdata.'''
         for msk in maskimages:
             assert type(msk) == type(self)
-            self.imdata = np.ma.masked_array(self.imdata,mask=msk.imdata)#msk*self.imdata
+            self.imdata = np.ma.masked_array(self.imdata,mask=msk.imdata,fill_value=np.nan)
 
 
     def unionmask(self,*maskimages):
