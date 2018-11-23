@@ -66,15 +66,19 @@ class math_class:
 
     def passrate(self):
         '''Percentage of voxels with value <1. Usefull after gamma comp.'''
-        return 0.01*np.nansum(self.imdata < 1.)/self.imdata.count()
+        return 100.*np.nansum(self.imdata < 1.)/self.imdata.count()
+        # try:
+        #     return 100.*np.nansum(self.imdata.filled(np.nan) < 1.)/np.count_nonzero(~np.isnan(self.imdata.filled(np.nan)))
+        # except:
+        #     return 100.*np.nansum(self.imdata < 1.)/np.count_nonzero(~np.isnan(self.imdata))
 
     def compute_gamma(self,other,dta,dd, local=False):
         assert type(other)==type(self)
 
         retval = self.copy()
 
-        # from npgamma import calc_gamma
-        # retval.imdata = calc_gamma(tuple(self.get_axes_labels()), self.imdata, tuple(other.get_axes_labels()), other.imdata, dta, dd, 0, dta / 3, dta*2, np.inf, 16)
+        from npgamma import calc_gamma
+        retval.imdata = calc_gamma(tuple(self.get_axes_labels()), self.imdata, tuple(other.get_axes_labels()), other.imdata, dta, self.max()*dd/100., 10, dta / 3, dta*2, np.inf, 16)
 
         # calc_gamma(
         #     coords_reference, dose_reference,
@@ -86,10 +90,10 @@ class math_class:
         #     max_concurrent_calc_points=max_concurrent_calc_points,
         #     num_threads=num_threads)
 
-        from pymedphys.gamma import gamma_shell
-        retval.imdata = gamma_shell(tuple(self.get_axes_labels()), self.imdata, tuple(other.get_axes_labels()), other.imdata, dd, dta, 10, 10, 10, local, None)
+        # from pymedphys.gamma import gamma_shell
+        # retval.imdata = gamma_shell(tuple(self.get_axes_labels()), self.imdata, tuple(other.get_axes_labels()), other.imdata, dd, dta, 10, dta, 10, local, None, True)
 
-        # gamma_shell(coords_reference, dose_reference, coords_evaluation, dose_evaluation, dose_percent_threshold, distance_mm_threshold, lower_percent_dose_cutoff=20, interp_fraction=10, max_gamma=inf, local_gamma=False, global_normalisation=None)
+        # gamma_shell(coords_reference, dose_reference, coords_evaluation, dose_evaluation, dose_percent_threshold, distance_mm_threshold, lower_percent_dose_cutoff=20, interp_fraction=10, max_gamma=inf, local_gamma=False, global_normalisation=None, skip_when_passed=False)
 
         return retval
 
