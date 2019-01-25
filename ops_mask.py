@@ -1,5 +1,5 @@
 import numpy as np
-import subprocess
+import subprocess, sys
 
 class mask_class:
     def towater(self):
@@ -9,7 +9,7 @@ class mask_class:
         # TODO: remove?
         #fake 4D that exploits an MHD-headertrick
         if self.header['NDims'] is not 3:
-            print("Can only generate 4D image from 3D image.")
+            print("Can only generate 4D image from 3D image.",file=sys.stderr)
             return
         inraw = self.header['ElementDataFile'] #we will delete this value before we need to reuse
         self.header['DimSize'].append(binsInNewDim)
@@ -25,8 +25,8 @@ class mask_class:
         newheadfile = self.file[:-4]+'4d.mhd'
         with open(newheadfile,'w+') as newheadf:
             newheadf.writelines("%s\n" % l for l in newhead)
-        print("New 4D mhd file:",newheadfile)
-        print("This requires the original .raw file to be present.")
+        print("New 4D mhd file:",newheadfile,file=sys.stderr)
+        print("This requires the original .raw file to be present.",file=sys.stderr)
         return image(newheadfile)
 
 

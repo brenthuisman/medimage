@@ -6,6 +6,7 @@ MetaIO is a library for reading and writing MetaImages, a file format used in Op
 More about the format at <https://itk.org/Wiki/ITK/MetaIO/Documentation#Quick_Start>.
 '''
 
+import sys
 import numpy as np
 from functools import reduce
 from os import path
@@ -13,6 +14,7 @@ from os import path
 def read(self,filename):
     headerfile = open(filename,'r')
     self.header = {}
+    datatype = None
     for line in headerfile:
         newline = line.strip()
         if len(newline)==0:
@@ -34,17 +36,17 @@ def read(self,filename):
         if 'ElementType' in newline[0]:
             self.header['ElementType'] = newline[1]
             if 'MET_FLOAT' in newline[1]:
-                self.datatype = '<f4'
+                datatype = '<f4'
             if 'MET_DOUBLE' in newline[1]:
-                self.datatype = '<f8'
+                datatype = '<f8'
             if 'MET_UCHAR' in newline[1]:
-                self.datatype = '<u1'
+                datatype = '<u1'
             if 'MET_SHORT' in newline[1]:
-                self.datatype = '<i2'
+                datatype = '<i2'
             if 'MET_INT' in newline[1]:
-                self.datatype = '<i4'
+                datatype = '<i4'
             if 'MET_LONG' in newline[1]:
-                self.datatype = '<i8'
+                datatype = '<i8'
         if 'NDims' in newline[0]:
             self.header['NDims'] = int(newline[1])
         if 'TransformMatrix' in newline[0]:
@@ -56,12 +58,12 @@ def read(self,filename):
         if 'ElementSpacing' in newline[0]:
             self.header['ElementSpacing'] = [float(x) for x in newline[1].split()]
     if 'LIST' in self.header['ElementDataFile']:
-        print("We have a fake 4D file, assuming 3D...")
+        print("We have a fake 4D file, assuming 3D...",file=sys.stderr)
         self.header['ElementDataFile'] = list(self.header.items())[-1][0]
         self.header['NDims'] -= 1
         self.header['DimSize'].pop()
 
-    indata = np.asarray(np.fromfile(path.join(self.path,self.header['ElementDataFile']), dtype=self.datatype), order='F', dtype=self.datatype)
+    indata = np.asarray(np.fromfile(path.join(self.path,self.header['ElementDataFile']), dtype=datatype), order='F', dtype=datatype)
 
     if len(indata) == reduce(lambda x, y: x*y, self.header['DimSize']):
         self.nrvox = len(indata)
@@ -76,10 +78,10 @@ def write(self,fullpath):
     fulloutraw = fullpath[:-4] + '.raw'
     #tofile is Row-major ('C' order), so that's why it happens to go correctly w.r.t. the HZYX order.
     self.imdata.swapaxes(0, self.header['NDims'] - 1).tofile(fulloutraw)
-    print("New raw file:",fulloutraw)
+    print("New raw file:",fulloutraw,file=sys.stderr)
     with open(fullpath,'w+') as newheadf:
         newheadf.writelines("%s\n" % l for l in __getheaderasstring(self))
-    print("New mhd file:",fullpath)
+    print("New mhd file:",fullpath,file=sys.stderr)
 
 
 def __getheaderasstring(self):

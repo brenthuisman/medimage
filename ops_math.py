@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 
 '''
 ImdataIn these functions I try
@@ -16,6 +17,9 @@ class math_class:
 
     def min(self):
         return np.nanmin(self.imdata)
+
+    def std(self):
+        return np.nanstd(self.imdata)
 
     def mean(self):
         return np.nanmean(self.imdata)
@@ -63,6 +67,11 @@ class math_class:
     def argmin(self):
         '''get index of lowest value in image'''
         return np.unravel_index(np.nanargmin(self.imdata),self.imdata.shape)
+
+    def fill_gaussian_noise(self,mean,perc):
+        assert 0. < perc < 100.
+        self.imdata = np.random.normal(mean,mean*perc/100.,size=tuple(self.header['DimSize']))
+        self.header['ElementType'] = 'MET_DOUBLE'
 
     def passrate(self):
         '''Percentage of voxels with value <1. Usefull after gamma comp.'''

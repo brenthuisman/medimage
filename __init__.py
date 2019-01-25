@@ -6,7 +6,7 @@ The interal header info, keeping track of dimensions, which ndarrays don't do, i
 I started writing this lib because the Python bindings of ITK were difficult to install at the time (pre-simpleITK) and frankly the ITK API was and is very convoluted for the relatively simple things I wished and wish to do. Since I am very comfortable with the numpy library and the ndarray API, and the very simple data format of MetaImage I quickly could write a basic reader and writer, and from that the library sprawled to fit my needs. In my postdoc, I upgraded the library to Python 3, removed ROOT dependencies, and started a cleanup of the API, fixing a basic indexing issue that was always present and added AVSFIELD/XDR read/write support.
 '''
 
-import numpy as np,copy
+import numpy as np,copy,logging,sys
 from os import path
 from functools import reduce
 from . import io_avsfield
@@ -18,22 +18,29 @@ from .ops_mask import mask_class
 
 class image(math_class,mask_class):
     def __init__(self, infile, **kwargs):
-        self.path,self.file = path.split(infile)
+        if path.isfile(infile):
+            self.path,self.file = path.split(infile)
+            if infile.endswith('.mhd'):
+                io_metaimage.read(self,infile)
+            elif infile.endswith('.xdr'):
+                io_avsfield.read(self,infile)
+            else:
+                print("Unrecognized file extension, aborting.",file=sys.stderr)
+                raise IOError()
+            print(self.file,"loaded. Shape:",self.imdata.shape,file=sys.stderr)
+        else: #new blank image
+            self.header = {}
+            self.header['ObjectType'] = 'Image'
+            self.header['ElementDataFile'] = '' #will we update as required
+            self.header['CompressedData'] = False
+            self.header['DimSize'] = kwargs['DimSize']
+            self.header['NDims'] = len(kwargs['DimSize'])
+            self.header['ElementSpacing'] = kwargs['ElementSpacing']
+            self.header['ElementType'] = 'MET_DOUBLE' #default dtype for numpy arrays
+            self.header['Offset'] = kwargs['Offset'] if 'Offset' in kwargs else [-x*(y/2) for x,y in zip(self.header['ElementSpacing'],self.header['DimSize'])]
 
-        for k,v in kwargs:
-            setattr(self, k, v)
-
-        if infile.endswith('.mhd'):
-            assert(path.isfile(infile))
-            io_metaimage.read(self,infile)
-        elif infile.endswith('.xdr'):
-            assert(path.isfile(infile))
-            io_avsfield.read(self,infile)
-        else:
-            print("Unrecognized file extension, aborting.")
-            raise IOError()
-
-        print(self.file,"loaded. Shape:",self.imdata.shape)
+            self.imdata = np.zeros(self.header['DimSize'])
+            print("New image created. Shape:",self.imdata.shape,file=sys.stderr)
 
 
     def copy(self):
@@ -57,10 +64,10 @@ class image(math_class,mask_class):
             self.imdata = self.imdata.astype(np.int32, copy=False)
             self.datatype = '<i4'
             self.header['ElementType'] = 'MET_INT'
-            print('MET_LONG not supported by many tools, so we autoconvert to MET_INT.')
+            print('MET_LONG not supported by many tools, so we autoconvert to MET_INT.',file=sys.stderr)
 
         if type(self.imdata) == np.ma.core.MaskedArray:
-            print("Your masked array was squashed with the masked voxels set to",fillval)
+            print("Your masked array was squashed with the masked voxels set to",fillval,file=sys.stderr)
             self.imdata = self.imdata.filled(fillval)
 
         if fullpath.endswith('.mhd'):

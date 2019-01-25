@@ -40,7 +40,7 @@ Not supported:
 
 import numpy as np
 from os import path
-import operator
+import operator,sys
 from functools import reduce
 
 def write(self,path):
@@ -102,7 +102,7 @@ def write(self,path):
 		exts[2*i+1] = ma
 	exts.tofile(fid)
 	fid.close()
-	print("New xdr file:",path)
+	print("New xdr file:",path,file=sys.stderr)
 
 
 def read(self,path):
