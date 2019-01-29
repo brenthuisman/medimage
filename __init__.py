@@ -62,7 +62,7 @@ class image(math_class,mask_class):
         # VV doesnt support long, so we convert to int
         if self.imdata.dtype == np.int64:
             self.imdata = self.imdata.astype(np.int32, copy=False)
-            self.datatype = '<i4'
+            #self.datatype = '<i4'
             self.header['ElementType'] = 'MET_INT'
             print('MET_LONG not supported by many tools, so we autoconvert to MET_INT.',file=sys.stderr)
 

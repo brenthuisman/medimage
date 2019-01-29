@@ -91,7 +91,10 @@ def write(self,path):
 
 	fid.writelines(lines)
 	# write as BE with correct target datatype
-	targettype = '>'+self.imdata.dtype.char+str(self.imdata.dtype.itemsize)
+	dchar = self.imdata.dtype.char
+	if dchar == "d":
+		dchar = "f"
+	targettype = '>'+dchar+str(self.imdata.dtype.itemsize)
 	self.imdata.swapaxes(0, ndim - 1).astype(targettype).tofile(fid)
 
 	#write extents, looped pairwise over axis
