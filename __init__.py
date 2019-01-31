@@ -37,7 +37,7 @@ class image(math_class,mask_class):
             self.header['NDims'] = len(kwargs['DimSize'])
             self.header['ElementSpacing'] = kwargs['ElementSpacing']
             self.header['ElementType'] = 'MET_DOUBLE' #default dtype for numpy arrays
-            self.header['Offset'] = kwargs['Offset'] if 'Offset' in kwargs else [-x*(y/2) for x,y in zip(self.header['ElementSpacing'],self.header['DimSize'])]
+            self.header['Offset'] = kwargs['Offset'] if 'Offset' in kwargs else [-x*((y-1)/2) for x,y in zip(self.header['ElementSpacing'],self.header['DimSize'])]
 
             self.imdata = np.zeros(self.header['DimSize'])
             print("New image created. Shape:",self.imdata.shape,file=sys.stderr)

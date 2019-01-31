@@ -76,13 +76,13 @@ def write(self,path):
 	minarr = [x*0.1 for x in self.header['Offset']] # mm to cm
 	maxarr = [(o+(n-1)*bs)*0.1 for o,n,bs in zip(self.header['Offset'],self.imdata.shape,self.header['ElementSpacing'])]
 
-	## exts in header included for NKI
-	lines.append('min_ext=')
-	lines.append(' '.join(["%.5f"%i for i in minarr]))
-	lines.append('\n')
-	lines.append('max_ext=')
-	lines.append(' '.join(["%.5f"%i for i in maxarr]))
-	lines.append('\n')
+	## exts in header not necesary
+	# lines.append('min_ext=')
+	# lines.append(' '.join(["%.5f"%i for i in minarr]))
+	# lines.append('\n')
+	# lines.append('max_ext=')
+	# lines.append(' '.join(["%.5f"%i for i in maxarr]))
+	# lines.append('\n')
 
 	lines.append(chr(12)) #the magic two bytes
 	lines.append(chr(12))
