@@ -60,9 +60,9 @@ class mask_class:
             index_N-=1
         for i in range(len(sortedindices)):
             if i<=index_N: # below 90%, not interested
-                self.imdata[sortedindices[i]] = 0
-            elif i>index_N: # we want only what's above the 90% boundary
                 self.imdata[sortedindices[i]] = 1
+            elif i>index_N: # we want only what's above the 90% boundary
+                self.imdata[sortedindices[i]] = 0
         self.imdata = np.reshape(self.imdata,shape) # puterback
 
 

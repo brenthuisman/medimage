@@ -31,7 +31,6 @@ class image(math_class,mask_class):
         else: #new blank image
             self.header = {}
             self.header['ObjectType'] = 'Image'
-            self.header['ElementDataFile'] = '' #will we update as required
             self.header['CompressedData'] = False
             self.header['DimSize'] = kwargs['DimSize']
             self.header['NDims'] = len(kwargs['DimSize'])

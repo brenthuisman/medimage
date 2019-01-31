@@ -71,7 +71,6 @@ class math_class:
     def fill_gaussian_noise(self,mean,perc):
         assert 0. < perc < 100.
         self.imdata = np.random.normal(mean,mean*perc/100.,size=tuple(self.header['DimSize']))
-        self.header['ElementType'] = 'MET_DOUBLE'
 
     def passrate(self):
         '''Percentage of voxels with value <1. Usefull after gamma comp.'''
