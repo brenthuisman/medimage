@@ -31,10 +31,7 @@ def read(self,filename):
             raise NotImplementedError("No valid input file (compressed).")
         if 'DimSize' in newline[0]:
             self.header['DimSize'] = [int(x) for x in newline[1].split()]
-        #if 'ElementDataFile' in newline[0]:
-        #	inraw = newline[1]
         if 'ElementType' in newline[0]:
-            self.header['ElementType'] = newline[1]
             if 'MET_FLOAT' in newline[1]:
                 datatype = '<f4'
             if 'MET_DOUBLE' in newline[1]:

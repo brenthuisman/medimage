@@ -36,7 +36,6 @@ class image(math_class,mask_class):
             self.header['DimSize'] = kwargs['DimSize']
             self.header['NDims'] = len(kwargs['DimSize'])
             self.header['ElementSpacing'] = kwargs['ElementSpacing']
-            self.header['ElementType'] = 'MET_DOUBLE' #default dtype for numpy arrays
             self.header['Offset'] = kwargs['Offset'] if 'Offset' in kwargs else [-x*((y-1)/2) for x,y in zip(self.header['ElementSpacing'],self.header['DimSize'])]
 
             self.imdata = np.zeros(self.header['DimSize'])
@@ -69,6 +68,23 @@ class image(math_class,mask_class):
         if type(self.imdata) == np.ma.core.MaskedArray:
             print("Your masked array was squashed with the masked voxels set to",fillval,file=sys.stderr)
             self.imdata = self.imdata.filled(fillval)
+
+		# Update type, such that all writer write correct headers.
+        if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'f4':
+            self.header['ElementType'] = 'MET_FLOAT'
+        if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'f8':
+            self.header['ElementType'] = 'MET_DOUBLE'
+        if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'd8':
+			# d8 is the default for most numpy generators, but is otherwise equiv to f8
+            self.header['ElementType'] = 'MET_DOUBLE'
+        if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'u1':
+            self.header['ElementType'] = 'MET_UCHAR'
+        if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i2':
+            self.header['ElementType'] = 'MET_SHORT'
+        if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i4':
+            self.header['ElementType'] = 'MET_INT'
+        if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i8':
+            self.header['ElementType'] = 'MET_LONG'
 
         if fullpath.endswith('.mhd'):
             io_metaimage.write(self,fullpath)
