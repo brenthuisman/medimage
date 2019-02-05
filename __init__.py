@@ -73,8 +73,8 @@ class image(math_class,mask_class):
             self.header['ElementType'] = 'MET_FLOAT'
         if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'f8':
             self.header['ElementType'] = 'MET_DOUBLE'
-        if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'd8':
-			# d8 is the default for most numpy generators, but is otherwise equiv to f8
+        if self.imdata.dtype.char == 'd':
+			# d (float64) is the default for most numpy generators, but is otherwise equiv to f8
             self.header['ElementType'] = 'MET_DOUBLE'
         if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'u1':
             self.header['ElementType'] = 'MET_UCHAR'

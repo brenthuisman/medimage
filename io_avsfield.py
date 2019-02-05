@@ -146,26 +146,25 @@ def read(self,path):
 		p=path
 		if p != '':
 			p = '%s/' % p
-		fname = '%s%s' % (p,
-						  header['variable 1 file'].split(' ')[0])
+		fname = '%s%s' % (p,header['variable 1 file'].split(' ')[0])
 		fid = open(fname, 'rb')
 
 	if header['data'] in ['xdr_real','xdr_float']:
 		raw_data = np.asarray(np.fromfile(fid, dtype='>f4', count=size), order='F', dtype='<f4')
-		header['ElementType'] = 'MET_FLOAT'
+		# header['ElementType'] = 'MET_FLOAT'
 	elif header['data'] == 'xdr_double':
 		raw_data = np.asarray(np.fromfile(fid, dtype='>f8', count=size), order='F', dtype='<f8')
-		header['ElementType'] = 'MET_DOUBLE'
+		# header['ElementType'] = 'MET_DOUBLE'
 	elif header['data'] == 'xdr_short':
 		raw_data = np.asarray(np.fromfile(fid, dtype='>i2', count=size), order='F', dtype='<i2')
-		header['ElementType'] = 'MET_SHORT'
+		# header['ElementType'] = 'MET_SHORT'
 	elif header['data'] == 'xdr_integer':
 		raw_data = np.asarray(np.fromfile(fid, dtype='>i4', count=size), order='F', dtype='<i4')
-		header['ElementType'] = 'MET_INT'
+		# header['ElementType'] = 'MET_INT'
 	elif header['data'] == 'byte':
 		# bytesize is both LE and BE!
 		raw_data = np.fromfile(fid, dtype='uint8')
-		header['ElementType'] = 'MET_UCHAR'
+		# header['ElementType'] = 'MET_UCHAR'
 	else:
 		raise NotImplementedError(
 			'datatype %s not implemented' % header['data'])
@@ -192,7 +191,7 @@ def __build_header(path,xdrheader):
 	newh['ElementDataFile'] = '' #je moet toch wat
 	newh['CompressedData'] = False
 	newh['DimSize'] = xdrheader['DimSize']
-	newh['ElementType'] = xdrheader['ElementType']
+	# newh['ElementType'] = xdrheader['ElementType']
 	newh['NDims'] = int(xdrheader['ndim'])
 	newh['TransformMatrix'] =  np.identity(newh['NDims']).flatten().tolist() # FIXME: read AVS transform from header or external field if present/provided.
 	newh['Offset'] = [x*10. for x in xdrheader['min_ext']]
