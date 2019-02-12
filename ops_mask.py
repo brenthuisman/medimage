@@ -33,8 +33,8 @@ class mask_class:
 	def applymask(self,*maskimages):
 		''' Applies the mask(s) you specify to imdata.'''
 		for msk in maskimages:
-			print("doen we dit?")
 			assert type(msk) == type(self)
+
 			self.imdata = np.ma.masked_array(self.imdata,mask=msk.imdata,fill_value=np.nan)
 
 
@@ -44,7 +44,7 @@ class mask_class:
 			self.imdata = np.logical_or(msk,self.imdata).astype(int)
 
 
-	def tomask_atvolume(self,N=90):
+	def tomask_atvolume(self,N=90,invert=True):
 		''' Make this image a mask based on the dose higher than the threshold of total dose (as percentage) you specify.
 		i.e. generates isodose mask at given volume in DVH. '''
 
@@ -59,11 +59,18 @@ class mask_class:
 		while running_pc < target_pc:
 			running_pc += self.imdata[sortedindices[index_N]]
 			index_N-=1
-		for i in range(len(sortedindices)):
-			if i<=index_N: # below 90%, not interested
-				self.imdata[sortedindices[i]] = 1
-			elif i>index_N: # we want only what's above the 90% boundary
-				self.imdata[sortedindices[i]] = 0
+		if invert: #for numpy.ma, 1 equals masked
+			for i in range(len(sortedindices)):
+				if i<=index_N: # below 90%, not interested
+					self.imdata[sortedindices[i]] = 1
+				elif i>index_N: # we want only what's above the 90% boundary
+					self.imdata[sortedindices[i]] = 0
+		else: #for simply multiplication, set masked values to 0
+			for i in range(len(sortedindices)):
+				if i<=index_N:
+					self.imdata[sortedindices[i]] = 0 #kill
+				elif i>index_N:
+					self.imdata[sortedindices[i]] = 1 #keep
 		self.imdata = np.reshape(self.imdata,shape) # puterback
 
 
@@ -73,9 +80,9 @@ class mask_class:
 		if threshold==None:
 			threshold=float(self.imdata.max())*0.5
 
-		if invert:
+		if invert: #for numpy.ma, 1 equals masked
 			self.imdata[self.imdata<threshold] = 1
 			self.imdata[self.imdata>=threshold] = 0
-		else:
+		else: #for simply multiplication, set masked values to 0
 			self.imdata[self.imdata<threshold] = 0
 			self.imdata[self.imdata>=threshold] = 1

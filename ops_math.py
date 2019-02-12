@@ -2,7 +2,7 @@ import numpy as np
 import sys
 
 '''
-ImdataIn these functions I try
+Support mathematical operations. Take possibility of imdata being a masked array into account (using the filled() method mostly)
 '''
 
 class math_class:
@@ -10,49 +10,35 @@ class math_class:
 		return self.imdata.size
 
 	def nanfrac(self):
-		try:
-			return np.count_nonzero(self.imdata.filled(np.nan))/self.size()
-		except:
-			return np.count_nonzero(np.isnan(self.imdata))/self.size()
+		''' Include masked out bins as nan.'''
+		return np.count_nonzero(np.isnan(np.ma.filled(self.imdata,fill_value=np.nan)))/self.imdata.size
 
 	def sum(self):
-		return np.nansum(self.imdata)
+		return np.nansum(np.ma.filled(self.imdata,fill_value=np.nan))
 
 	def max(self):
-		return np.nanmax(self.imdata)
+		return np.nanmax(np.ma.filled(self.imdata,fill_value=np.nan))
 
 	def min(self):
-		return np.nanmin(self.imdata)
+		return np.nanmin(np.ma.filled(self.imdata,fill_value=np.nan))
 
 	def std(self):
-		try:
-			return np.nanstd(self.imdata.filled(np.nan))
-		except:
-			return np.nanstd(self.imdata)
+		return np.nanstd(np.ma.filled(self.imdata,fill_value=np.nan))
 
 	def mean(self):
-		try:
-			return np.nanmean(self.imdata.filled(np.nan))
-		except:
-			return np.nanmean(self.imdata)
+		return np.nanmean(np.ma.filled(self.imdata,fill_value=np.nan))
 
 	def mean_excl_zero(self):
 		return np.nanmean(self.imdata[self.imdata.nonzero()])
 
 	def median(self):
-		try:
-			return np.nanmedian(self.imdata.filled(np.nan))
-		except:
-			return np.nanmedian(self.imdata)
+		return np.nanmedian(self.imdata.filled(np.nan))
 
 	def percentiles(self,*percentiles):
-		try:
-			return np.nanpercentile(self.imdata.filled(np.nan),*percentiles)
-		except:
-			return np.nanpercentile(self.imdata,*percentiles)
+		return np.nanpercentile(self.imdata.filled(np.nan),*percentiles)
 
 	def smudge(self,mskval,frac=1.):
-		#assume mskval must be ignored
+		'''assume mskval must be ignored'''
 		tmp = np.ma.masked_where(self.imdata == mskval, self.imdata)
 		self.imdata[self.imdata != mskval] = tmp.mean()
 

@@ -45,7 +45,7 @@ class image(math_class,mask_class):
         return copy.deepcopy(self)
 
 
-    def saveas(self,filename=None,fillval=0):
+    def saveas(self,filename=None):
         ''' If you applied any masks, these voxels will be set to zero unless you set fillval. '''
 
         if filename == None:
@@ -65,8 +65,8 @@ class image(math_class,mask_class):
             print('MET_LONG not supported by many tools, so we autoconvert to MET_INT.',file=sys.stderr)
 
         if type(self.imdata) == np.ma.core.MaskedArray:
-            print("Your masked array was squashed with the masked voxels set to",fillval,file=sys.stderr)
-            self.imdata = self.imdata.filled(fillval)
+            print("Your masked array was squashed with the masked voxels set to",self.imdata.fill_value,file=sys.stderr)
+            self.imdata = self.imdata.filled()
 
 		# Update type, such that all writer write correct headers.
         if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'f4':
