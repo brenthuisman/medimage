@@ -25,6 +25,10 @@ class math_class:
 	def std(self):
 		return np.nanstd(np.ma.filled(self.imdata,fill_value=np.nan))
 
+	def relunc(self):
+		'''relative uncertainty (std / mean)'''
+		return np.nanstd(np.ma.filled(self.imdata,fill_value=np.nan))/np.nanmean(np.ma.filled(self.imdata,fill_value=np.nan))
+
 	def mean(self):
 		return np.nanmean(np.ma.filled(self.imdata,fill_value=np.nan))
 
