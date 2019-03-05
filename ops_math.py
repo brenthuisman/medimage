@@ -22,6 +22,10 @@ class math_class:
 	def min(self):
 		return np.nanmin(np.ma.filled(self.imdata,fill_value=np.nan))
 
+	def add(self,other):
+		assert self.imdata.shape == other.imdata.shape
+		self.imdata = self.imdata + other.imdata
+
 	def std(self):
 		return np.nanstd(np.ma.filled(self.imdata,fill_value=np.nan))
 
