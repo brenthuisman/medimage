@@ -33,9 +33,11 @@ AVSField header parsing is based on Grey Hills work available at <https://github
 
 Not supported:
 * LE images (easily added, pull requests welcome)
+* compressed images.
 * unportable types (i.e. data=float means machine specific endianness)
 * veclen =/= 1 (i.e. RGB per voxel) (easily added, pull requests welcome)
 * nonuniform images
+
 '''
 
 import numpy as np
@@ -43,8 +45,8 @@ from os import path
 import operator,sys
 from functools import reduce
 
-def write(self,path):
-	fid = open(path, 'wb')
+def write(self,infile):
+	fid = open(infile, 'wb')
 
 	lines = []
 	# write the ascii header
@@ -86,6 +88,8 @@ def write(self,path):
 	dchar = self.imdata.dtype.char
 	if dchar == "d":
 		dchar = "f"
+	if dchar == "h":
+		dchar = "i"
 	targettype = '>'+dchar+str(self.imdata.dtype.itemsize)
 	self.imdata.swapaxes(0, ndim - 1).astype(targettype).tofile(fid)
 
@@ -97,12 +101,12 @@ def write(self,path):
 		exts[2*i+1] = ma
 	exts.tofile(fid)
 	fid.close()
-	print("New xdr file:",path,file=sys.stderr)
+	print("New xdr file:",infile,file=sys.stderr)
 
 
-def read(self,path):
+def read(self,infile):
 	''' currently extents are read from ascii header, not final bytes! those are skipped. '''
-	fid = open(path, 'rb')
+	fid = open(infile, 'rb')
 
 	# read the fld header
 	ascii_header = []
@@ -139,35 +143,70 @@ def read(self,path):
 	size = reduce(operator.mul, shape)
 	raw_data = None
 
-	# external
-	fname = None
-	if 'variable 1 file' in list(header.keys()):
-		fid.close()
-		p=path
-		if p != '':
-			p = '%s/' % p
-		fname = '%s%s' % (p,header['variable 1 file'].split(' ')[0])
-		fid = open(fname, 'rb')
+	compression = 0
+	try:
+		compression = int(header['nki_compression'])
+	except:
+		pass #if not present or zero, then no compression.
+	if compression is not 0:
+		#raise NotImplementedError('This image has compressed imagedata, which is not supported by this library.')
+		try:
+			#must calc how many bytes of compressed data there are.
+			image_data_offset = fid.tell()
+			extent_data_offset = path.getsize(infile) - ndim * 2 * 4
+			comp_size = extent_data_offset - image_data_offset
 
-	if header['data'] in ['xdr_real','xdr_float']:
-		raw_data = np.asarray(np.fromfile(fid, dtype='>f4', count=size), order='F', dtype='<f4')
-		# header['ElementType'] = 'MET_FLOAT'
-	elif header['data'] == 'xdr_double':
-		raw_data = np.asarray(np.fromfile(fid, dtype='>f8', count=size), order='F', dtype='<f8')
-		# header['ElementType'] = 'MET_DOUBLE'
-	elif header['data'] == 'xdr_short':
-		raw_data = np.asarray(np.fromfile(fid, dtype='>i2', count=size), order='F', dtype='<i2')
-		# header['ElementType'] = 'MET_SHORT'
-	elif header['data'] == 'xdr_integer':
-		raw_data = np.asarray(np.fromfile(fid, dtype='>i4', count=size), order='F', dtype='<i4')
-		# header['ElementType'] = 'MET_INT'
-	elif header['data'] == 'byte':
-		# bytesize is both LE and BE!
-		raw_data = np.fromfile(fid, dtype='uint8')
-		# header['ElementType'] = 'MET_UCHAR'
-	else:
-		raise NotImplementedError(
-			'datatype %s not implemented' % header['data'])
+			import ctypes
+			nki = ctypes.cdll.LoadLibrary(path.join(path.dirname(path.abspath(__file__)),'nki_decomp.dll'))
+
+			# src = ctypes.c_char * comp_size
+			# dest = ctypes.c_short * size
+			# nki.nki_private_decompress(ctypes.byref(dest),ctypes.byref(src),len(src))
+
+			src = np.fromfile(fid, dtype='uint8', count=comp_size)
+			dest = np.zeros(size,dtype='<i2')
+
+			nki.nki_private_decompress(dest.ctypes.data_as(ctypes.POINTER(ctypes.c_short)),src.ctypes.data_as(ctypes.POINTER(ctypes.c_char)),len(src))
+
+			# TODO: np.frombuffer ??
+
+			raw_data = np.asarray(dest, order='F', dtype='<i2')
+
+			# put fid at the extent
+			assert(fid.tell() == extent_data_offset)#fid.seek(extent_data_offset)
+		except:
+			raise NotImplementedError('This image has compressed imagedata, but the external nki_decomp library cannot be found.')
+
+	elif compression is 0:
+		# external
+		fname = None
+		if 'variable 1 file' in list(header.keys()):
+			fid.close()
+			p=infile
+			if p != '':
+				p = '%s/' % p
+			fname = '%s%s' % (p,header['variable 1 file'].split(' ')[0])
+			fid = open(fname, 'rb')
+
+		if header['data'] in ['xdr_real','xdr_float']:
+			raw_data = np.asarray(np.fromfile(fid, dtype='>f4', count=size), order='F', dtype='<f4')
+			# header['ElementType'] = 'MET_FLOAT'
+		elif header['data'] == 'xdr_double':
+			raw_data = np.asarray(np.fromfile(fid, dtype='>f8', count=size), order='F', dtype='<f8')
+			# header['ElementType'] = 'MET_DOUBLE'
+		elif header['data'] == 'xdr_short':
+			raw_data = np.asarray(np.fromfile(fid, dtype='>i2', count=size), order='F', dtype='<i2')
+			# header['ElementType'] = 'MET_SHORT'
+		elif header['data'] == 'xdr_integer':
+			raw_data = np.asarray(np.fromfile(fid, dtype='>i4', count=size), order='F', dtype='<i4')
+			# header['ElementType'] = 'MET_INT'
+		elif header['data'] == 'byte':
+			# bytesize is both LE and BE!
+			raw_data = np.fromfile(fid, dtype='uint8')
+			# header['ElementType'] = 'MET_UCHAR'
+		else:
+			raise NotImplementedError(
+				'datatype %s not implemented' % header['data'])
 
 	#overwrite the header if it was ever present, AVSField standard mandates extents as final bytes, not header.
 	header['min_ext'] = []
@@ -181,11 +220,11 @@ def read(self,path):
 
 	fid.close()
 
-	self.header = __build_header(path,header)
+	self.header = __build_header(infile,header)
 	self.imdata = raw_data.reshape(tuple(reversed(shape))).swapaxes(0, ndim - 1)
 
 
-def __build_header(path,xdrheader):
+def __build_header(infile,xdrheader):
 	newh = {}
 	newh['ObjectType'] = 'Image'
 	newh['ElementDataFile'] = '' #je moet toch wat

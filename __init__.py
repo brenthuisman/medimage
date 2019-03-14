@@ -95,10 +95,16 @@ class image(math_class,mask_class):
 			self.header['ElementType'] = 'MET_UCHAR'
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i2':
 			self.header['ElementType'] = 'MET_SHORT'
+		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'h2':
+			#sumtijms...
+			self.header['ElementType'] = 'MET_SHORT'
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i4':
 			self.header['ElementType'] = 'MET_INT'
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i8':
 			self.header['ElementType'] = 'MET_LONG'
+
+		print(self.imdata.dtype)
+		print(self.header['ElementType'])
 
 		if fullpath.endswith('.mhd'):
 			io_metaimage.write(self,fullpath)
