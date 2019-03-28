@@ -33,7 +33,6 @@ AVSField header parsing is based on Grey Hills work available at <https://github
 
 Not supported:
 * LE images (easily added, pull requests welcome)
-* compressed images.
 * unportable types (i.e. data=float means machine specific endianness)
 * veclen =/= 1 (i.e. RGB per voxel) (easily added, pull requests welcome)
 * nonuniform images
