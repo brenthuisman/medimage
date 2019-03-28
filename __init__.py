@@ -40,6 +40,7 @@ class image(math_class,mask_class):
 
 		elif len(args) == 0 and 'DimSize' in kwargs and 'ElementSpacing' in kwargs:
 			#new blank image
+			self.path,self.file=('','')
 			self.header = {}
 			self.header['ObjectType'] = 'Image'
 			self.header['CompressedData'] = False
@@ -48,7 +49,10 @@ class image(math_class,mask_class):
 			self.header['ElementSpacing'] = kwargs['ElementSpacing']
 			self.header['Offset'] = kwargs['Offset'] if 'Offset' in kwargs else [-x*((y-1)/2) for x,y in zip(self.header['ElementSpacing'],self.header['DimSize'])]
 
-			self.imdata = np.zeros(self.header['DimSize'])
+			dt='<f8'
+			if 'dt' in kwargs:
+				dt=kwargs['dt']
+			self.imdata = np.zeros(self.header['DimSize'], dtype=dt)
 			print("New image created. Shape:",self.imdata.shape,file=sys.stderr)
 
 		else:
@@ -103,8 +107,8 @@ class image(math_class,mask_class):
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i8':
 			self.header['ElementType'] = 'MET_LONG'
 
-		print(self.imdata.dtype)
-		print(self.header['ElementType'])
+		# print(self.imdata.dtype)
+		# print(self.header['ElementType'])
 
 		if fullpath.endswith('.mhd'):
 			io_metaimage.write(self,fullpath)
@@ -146,3 +150,10 @@ class image(math_class,mask_class):
 			profile = np.moveaxis(self.imdata,axi,-1)[idx_copy]
 			profiles.append(profile)
 		return profiles
+
+
+	def get_ctypes_pointer_to_data(self):
+		import ctypes
+		typecodes = np.ctypeslib._get_typecodes()
+		ctypes_type = typecodes[self.imdata.__array_interface__['typestr']]
+		return self.imdata.ctypes.data_as(ctypes.POINTER(ctypes_type))
