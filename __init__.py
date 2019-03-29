@@ -59,7 +59,6 @@ class image(math_class,mask_class):
 			raise IOError("Image instantiated with invalid parameters.")
 
 
-
 	def copy(self):
 		return copy.deepcopy(self)
 

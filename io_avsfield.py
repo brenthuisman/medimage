@@ -155,12 +155,16 @@ def read(self,infile):
 			extent_data_offset = path.getsize(infile) - ndim * 2 * 4
 			comp_size = extent_data_offset - image_data_offset
 
-			import ctypes
-			nki = ctypes.cdll.LoadLibrary(path.join(path.dirname(path.abspath(__file__)),'nki_decomp.dll'))
+			libnki_decomp=''
+			if sys.platform == 'win32':
+				libnki_decomp='nki_decomp.dll'
+			elif sys.platform == 'linux':
+				libnki_decomp='nki_decomp.so'
+			else:
+				raise NotImplementedError("This image has compressed imagedata, but I don't have a decompression library for your platform! Please compile it yourself, source available in `image/nki_decomp`.")
 
-			# src = ctypes.c_char * comp_size
-			# dest = ctypes.c_short * size
-			# nki.nki_private_decompress(ctypes.byref(dest),ctypes.byref(src),len(src))
+			import ctypes
+			nki = ctypes.cdll.LoadLibrary(path.join(path.dirname(path.abspath(__file__)),libnki_decomp))
 
 			src = np.fromfile(fid, dtype='uint8', count=comp_size)
 			dest = np.zeros(size,dtype='<i2')
