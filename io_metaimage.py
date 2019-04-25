@@ -8,7 +8,6 @@ More about the format at <https://itk.org/Wiki/ITK/MetaIO/Documentation#Quick_St
 
 import sys
 import numpy as np
-from functools import reduce
 from os import path
 
 def read(self,filename):

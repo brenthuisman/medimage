@@ -40,6 +40,10 @@ class image(math_class,mask_class):
 
 		elif len(args) == 0 and 'DimSize' in kwargs and 'ElementSpacing' in kwargs:
 			#new blank image
+			if not isinstance(kwargs['DimSize'],list) or not isinstance(kwargs['ElementSpacing'],list):
+				raise IOError("New image must be instantiated with lists for Dimsize and ElementSpacing.")
+			if len(kwargs['DimSize']) is not len(kwargs['ElementSpacing']):
+				raise IOError("New image instantiated with mismatched dimensions.")
 			self.path,self.file=('','')
 			self.header = {}
 			self.header['ObjectType'] = 'Image'
