@@ -6,7 +6,7 @@ The interal header info, keeping track of dimensions, which ndarrays don't do, i
 I started writing this lib because the Python bindings of ITK were difficult to install at the time (pre-simpleITK) and frankly the ITK API was and is very convoluted for the relatively simple things I wished and wish to do. Since I am very comfortable with the numpy library and the ndarray API, and the very simple data format of MetaImage I quickly could write a basic reader and writer, and from that the library sprawled to fit my needs. In my postdoc, I upgraded the library to Python 3, removed ROOT dependencies, and started a cleanup of the API, fixing a basic indexing issue that was always present and added AVSFIELD/XDR read/write support.
 '''
 
-import numpy as np,copy,logging,sys
+import numpy as np,copy,logging,sys,operator
 from os import path
 from functools import reduce
 from . import io_avsfield
@@ -66,6 +66,12 @@ class image(math_class,mask_class):
 	def copy(self):
 		return copy.deepcopy(self)
 
+	def nvox(self):
+		return reduce(operator.mul,self.header['DimSize'])
+
+	def ndim(self):
+		return self.header['NDims']
+
 
 	def saveas(self,filename=None):
 		''' If you applied any masks, these voxels will be set to zero unless you set fillval. '''
@@ -110,8 +116,8 @@ class image(math_class,mask_class):
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i8':
 			self.header['ElementType'] = 'MET_LONG'
 
-		# print(self.imdata.dtype)
-		# print(self.header['ElementType'])
+		if 'ElementType' not in self.header:
+			raise NotImplementedError("Unknown array type '"+str(self.imdata.dtype)+"' encountered, and 'ElementType' was not set. Can't save, aborting...")
 
 		if fullpath.endswith('.mhd'):
 			io_metaimage.write(self,fullpath)

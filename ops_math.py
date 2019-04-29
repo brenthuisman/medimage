@@ -1,5 +1,5 @@
 import numpy as np
-import sys
+import copy
 
 '''
 Support mathematical operations. Take possibility of imdata being a masked array into account (using the filled() method mostly)
@@ -81,10 +81,29 @@ class math_class:
 	def passrate(self):
 		'''Percentage of voxels with value <1. Usefull after gamma comp.'''
 		return 100.*np.nansum(self.imdata < 1.)/self.imdata.count()
-		# try:
-		#     return 100.*np.nansum(self.imdata.filled(np.nan) < 1.)/np.count_nonzero(~np.isnan(self.imdata.filled(np.nan)))
-		# except:
-		#     return 100.*np.nansum(self.imdata < 1.)/np.count_nonzero(~np.isnan(self.imdata))
+
+	def hu2dens(self,hu2dens_table):
+		'''Convert this image from HU indices to materials densities, using the table you provide.'''
+		self.map_values(hu2dens_table,True)
+
+	def dens2mat(self,dens2mat_table):
+		'''Convert this image from material densities to (continuous) materials indices, using the table you provide.'''
+		materials = copy.deepcopy(dens2mat_table[1])
+		dens2mat_table = copy.deepcopy(dens2mat_table)
+		dens2mat_table[1]=list(range(len(dens2mat_table[0]))) #create material indices
+		print(dens2mat_table)
+		self.map_values(dens2mat_table,False)
+		return materials # send to gpumcd
+
+	def map_values(self,table):
+		'''Map the imdata-values of this image using the table you supply. This table should be a list of two equally long list, where the first list maps to the current imdata-values, and the second to where you want them mapped. This function interpolates linearly, and does NOT extrapolate.'''
+		assert len(table)==2
+		xData=table[0]
+		yData=table[1]
+		assert len(xData)==len(yData)
+
+		self.imdata= np.interp(self.imdata,xData,yData) #Note: changes type to double
+
 
 	def compute_gamma(self,other,dta,dd, local=False):
 		assert type(other)==type(self)
@@ -104,7 +123,7 @@ class math_class:
 		#     max_concurrent_calc_points=max_concurrent_calc_points,
 		#     num_threads=num_threads)
 
-		# from pymedphys.gamma import gamma_shell
+		# from pymedphyData.gamma import gamma_shell
 		# retval.imdata = gamma_shell(tuple(self.get_axes_labels()), self.imdata, tuple(other.get_axes_labels()), other.imdata, dd, dta, 10, dta, 10, local, None, True)
 
 		# gamma_shell(coords_reference, dose_reference, coords_evaluation, dose_evaluation, dose_percent_threshold, distance_mm_threshold, lower_percent_dose_cutoff=20, interp_fraction=10, max_gamma=inf, local_gamma=False, global_normalisation=None, skip_when_passed=False)
