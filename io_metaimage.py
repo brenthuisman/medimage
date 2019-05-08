@@ -69,7 +69,10 @@ def read(self,filename):
 		raise IOError("The .mhd header info specified a different image size as was found in the .raw file.")
 
 	# self.imdata = indata.reshape(tuple(reversed(self.header['DimSize']))).swapaxes(0, self.header['NDims'] - 1)
-	self.imdata = indata.reshape(tuple(self.header['DimSize']))
+	if self.header['NDims'] == 4:
+		self.imdata = indata.reshape(tuple(self.header['DimSize'])).swapaxes(0, self.header['NDims'] - 1) # FIXME, should be switch...
+	else:
+		self.imdata = indata.reshape(tuple(self.header['DimSize']))
 
 
 def write(self,fullpath):
