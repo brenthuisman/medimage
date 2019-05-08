@@ -85,7 +85,7 @@ class math_class:
 	def hu_to_density(self,hu2dens_table):
 		'''Convert this image from HU indices to materials densities, using the table you provide.'''
 		self.map_values(hu2dens_table)
-		self.imdata=self.imdata.astype('f4')
+		self.imdata=self.imdata.astype('<f4')
 
 	def ct_to_hu(self,intercept,slope):
 		'''Convert this image from CT numbers to Hounsdield units, using the intercept and slope you provide.'''
@@ -97,14 +97,14 @@ class math_class:
 		dens2mat_table = copy.deepcopy(dens2mat_table)
 		dens2mat_table[1]=list(range(len(dens2mat_table[0]))) #create material indices
 		self.map_values(dens2mat_table)
-		self.imdata=self.imdata.astype('f4')
+		self.imdata=self.imdata.astype('<f4')
 		return materials # send to gpumcd
 
 	def map_values(self,table):
 		'''Map the imdata-values of this image using the table you supply. This table should be a list of two equally long list, where the first list maps to the current imdata-values, and the second to where you want them mapped. This function interpolates linearly, and does NOT extrapolate.'''
 		assert len(table)==2
 		assert len(table[0])==len(table[1])
-		self.imdata= np.interp(self.imdata,table[0],table[1]) #Note: changes type to double
+		self.imdata= np.interp(self.imdata,table[0],table[1]) #type will be different!
 
 	def compute_gamma(self,other,dta,dd, local=False):
 		assert type(other)==type(self)

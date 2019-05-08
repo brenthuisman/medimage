@@ -90,7 +90,8 @@ def write(self,infile):
 	if dchar == "h":
 		dchar = "i"
 	targettype = '>'+dchar+str(self.imdata.dtype.itemsize)
-	self.imdata.swapaxes(0, ndim - 1).astype(targettype).tofile(fid)
+	# self.imdata.swapaxes(0, ndim - 1).astype(targettype).tofile(fid)
+	self.imdata.astype(targettype).tofile(fid)
 
 	#write extents, looped pairwise over axis
 	#xmin,xmax,ymin,ymax,zmin,zmax
@@ -104,7 +105,6 @@ def write(self,infile):
 
 
 def read(self,infile):
-	''' currently extents are read from ascii header, not final bytes! those are skipped. '''
 	fid = open(infile, 'rb')
 
 	# read the fld header
@@ -141,6 +141,7 @@ def read(self,infile):
 
 	size = reduce(operator.mul, shape)
 	raw_data = None
+	raw_data_order = 'C' #'F'
 
 	compression = 0
 	try:
@@ -148,7 +149,6 @@ def read(self,infile):
 	except:
 		pass #if not present or zero, then no compression.
 	if compression is not 0:
-		#raise NotImplementedError('This image has compressed imagedata, which is not supported by this library.')
 		try:
 			#must calc how many bytes of compressed data there are.
 			image_data_offset = fid.tell()
@@ -173,7 +173,7 @@ def read(self,infile):
 
 			# TODO: np.frombuffer ??
 
-			raw_data = np.asarray(dest, order='F', dtype='<i2')
+			raw_data = np.asarray(dest, order=raw_data_order, dtype='<i2')
 
 			# put fid at the extent
 			assert(fid.tell() == extent_data_offset)#fid.seek(extent_data_offset)
@@ -192,16 +192,16 @@ def read(self,infile):
 			fid = open(fname, 'rb')
 
 		if header['data'] in ['xdr_real','xdr_float']:
-			raw_data = np.asarray(np.fromfile(fid, dtype='>f4', count=size), order='F', dtype='<f4')
+			raw_data = np.asarray(np.fromfile(fid, dtype='>f4', count=size), order=raw_data_order, dtype='<f4')
 			# header['ElementType'] = 'MET_FLOAT'
 		elif header['data'] == 'xdr_double':
-			raw_data = np.asarray(np.fromfile(fid, dtype='>f8', count=size), order='F', dtype='<f8')
+			raw_data = np.asarray(np.fromfile(fid, dtype='>f8', count=size), order=raw_data_order, dtype='<f8')
 			# header['ElementType'] = 'MET_DOUBLE'
 		elif header['data'] == 'xdr_short':
-			raw_data = np.asarray(np.fromfile(fid, dtype='>i2', count=size), order='F', dtype='<i2')
+			raw_data = np.asarray(np.fromfile(fid, dtype='>i2', count=size), order=raw_data_order, dtype='<i2')
 			# header['ElementType'] = 'MET_SHORT'
 		elif header['data'] == 'xdr_integer':
-			raw_data = np.asarray(np.fromfile(fid, dtype='>i4', count=size), order='F', dtype='<i4')
+			raw_data = np.asarray(np.fromfile(fid, dtype='>i4', count=size), order=raw_data_order, dtype='<i4')
 			# header['ElementType'] = 'MET_INT'
 		elif header['data'] == 'byte':
 			# bytesize is both LE and BE!
@@ -224,7 +224,7 @@ def read(self,infile):
 	fid.close()
 
 	self.header = __build_header(infile,header)
-	self.imdata = raw_data.reshape(tuple(reversed(shape))).swapaxes(0, ndim - 1)
+	self.imdata = raw_data.reshape(shape)
 
 
 def __build_header(infile,xdrheader):

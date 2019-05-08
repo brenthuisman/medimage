@@ -6,7 +6,7 @@ The interal header info, keeping track of dimensions, which ndarrays don't do, i
 I started writing this lib because the Python bindings of ITK were difficult to install at the time (pre-simpleITK) and frankly the ITK API was and is very convoluted for the relatively simple things I wished and wish to do. Since I am very comfortable with the numpy library and the ndarray API, and the very simple data format of MetaImage I quickly could write a basic reader and writer, and from that the library sprawled to fit my needs. In my postdoc, I upgraded the library to Python 3, removed ROOT dependencies, and started a cleanup of the API, fixing a basic indexing issue that was always present and added AVSFIELD/XDR read/write support.
 '''
 
-import numpy as np,copy,logging,sys,operator
+import numpy as np,copy,logging,sys,operator,collections
 from os import path
 from functools import reduce
 from . import io_avsfield
@@ -29,9 +29,10 @@ class image(math_class,mask_class):
 			self.path,self.file = path.split(infile)
 			if infile.endswith('.mhd'):
 				io_metaimage.read(self,infile)
-			elif infile.endswith('.xdr'):
+			elif infile.endswith('.xdr') or infile.endswith('.fld'):
 				io_avsfield.read(self,infile)
 			else:
+				## TODO read first n bytes, determine possible filetype from there?
 				raise IOError("Unrecognized file extension, aborting.")
 			print(self.file,"loaded. Shape:",self.imdata.shape,file=sys.stderr)
 
@@ -40,7 +41,7 @@ class image(math_class,mask_class):
 
 		elif len(args) == 0 and 'DimSize' in kwargs and 'ElementSpacing' in kwargs:
 			#new blank image
-			if not isinstance(kwargs['DimSize'],list) or not isinstance(kwargs['ElementSpacing'],list):
+			if not isinstance(kwargs['DimSize'],collections.Container) or not isinstance(kwargs['ElementSpacing'],collections.Container):
 				raise IOError("New image must be instantiated with lists for Dimsize and ElementSpacing.")
 			if len(kwargs['DimSize']) is not len(kwargs['ElementSpacing']):
 				raise IOError("New image instantiated with mismatched dimensions.")
@@ -53,11 +54,11 @@ class image(math_class,mask_class):
 			self.header['ElementSpacing'] = kwargs['ElementSpacing']
 			self.header['Offset'] = kwargs['Offset'] if 'Offset' in kwargs else [-x*((y-1)/2) for x,y in zip(self.header['ElementSpacing'],self.header['DimSize'])]
 
-			dt='<f8'
-			if 'dt' in kwargs:
-				dt=kwargs['dt']
-			self.imdata = np.zeros(self.header['DimSize'], dtype=dt)
-			print("New image created. Shape:",self.imdata.shape,file=sys.stderr)
+			if 'dt' not in kwargs:
+				kwargs['dt'] = '<f8'
+			print
+			self.imdata = np.zeros(self.header['DimSize'], dtype=kwargs['dt'])
+			print("New image created. Shape:",self.imdata.shape,", Type:",kwargs['dt'],file=sys.stderr)
 
 		else:
 			raise IOError("Image instantiated with invalid parameters.")
