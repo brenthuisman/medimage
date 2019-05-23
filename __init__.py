@@ -11,6 +11,7 @@ from os import path
 from functools import reduce
 from . import io_avsfield
 from . import io_metaimage
+from . import io_dicom
 
 #Functionality is split by moving function to another baseclass that we then inherit from
 from .ops_math import math_class
@@ -31,10 +32,18 @@ class image(math_class,mask_class):
 				io_metaimage.read(self,infile)
 			elif infile.endswith('.xdr') or infile.endswith('.fld'):
 				io_avsfield.read(self,infile)
+			elif infile.endswith('.dcm'):
+				io_dicom.read(self,infile)
 			else:
 				## TODO read first n bytes, determine possible filetype from there?
 				raise IOError("Unrecognized file extension, aborting.")
 			print(self.file,"loaded. Shape:",self.imdata.shape,file=sys.stderr)
+
+		elif len(args) > 0 and path.isdir(args[0]):
+			# Assume dicomdir provided.
+			self.path = str(args[0])
+			io_dicom.read(self,self.path)
+			print(self.path,"loaded. Shape:",self.imdata.shape,file=sys.stderr)
 
 		elif len(args) > 0 and not path.isfile(args[0]):
 			raise IOError("Invalid filename provided: "+str(args[0]))
@@ -76,6 +85,9 @@ class image(math_class,mask_class):
 
 	def saveas(self,filename=None):
 		''' If you applied any masks, these voxels will be set to zero unless you set fillval. '''
+		if self.header['DimSize'] != list(self.imdata.shape):
+			print("Your array shape",list(self.imdata.shape),"was changed, setting correct DimSize.",file=sys.stderr)
+			self.header['DimSize'] = list(self.imdata.shape)
 
 		if filename == None:
 			raise FileNotFoundError("You must specify a filename when you want to save!")
@@ -89,8 +101,6 @@ class image(math_class,mask_class):
 		# VV doesnt support long, so we convert to int
 		if self.imdata.dtype == np.int64:
 			self.imdata = self.imdata.astype(np.int32, copy=False)
-			#self.datatype = '<i4'
-			self.header['ElementType'] = 'MET_INT'
 			print('MET_LONG not supported by many tools, so we autoconvert to MET_INT.',file=sys.stderr)
 
 		if type(self.imdata) == np.ma.core.MaskedArray:
@@ -98,6 +108,8 @@ class image(math_class,mask_class):
 			self.imdata = self.imdata.filled()
 
 		# Update type, such that all writer write correct headers.
+		# types in numpy:
+		# https://docs.scipy.org/doc/numpy/reference/arrays.scalars.html#arrays-scalars-built-in
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'f4':
 			self.header['ElementType'] = 'MET_FLOAT'
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'f8':
@@ -110,20 +122,24 @@ class image(math_class,mask_class):
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i2':
 			self.header['ElementType'] = 'MET_SHORT'
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'h2':
-			#sumtijms...
 			self.header['ElementType'] = 'MET_SHORT'
+		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'H2':
+			self.header['ElementType'] = 'MET_USHORT'
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i4':
 			self.header['ElementType'] = 'MET_INT'
 		if self.imdata.dtype.char+str(self.imdata.dtype.itemsize) == 'i8':
 			self.header['ElementType'] = 'MET_LONG'
 
 		if 'ElementType' not in self.header:
+			print (self.imdata.dtype.char+str(self.imdata.dtype.itemsize))
 			raise NotImplementedError("Unknown array type '"+str(self.imdata.dtype)+"' encountered, and 'ElementType' was not set. Can't save, aborting...")
 
 		if fullpath.endswith('.mhd'):
 			io_metaimage.write(self,fullpath)
 		elif self.file.endswith('.xdr'):
 			io_avsfield.write(self,fullpath)
+		elif self.file.endswith('.dcm'):
+			io_dicom.write(self,fullpath)
 
 		return fullpath
 

@@ -4,6 +4,7 @@ Read/write functionality for the MetaImage format.
 MetaIO is a library for reading and writing MetaImages, a file format used in OpenGate, ITK and associated toolkits. This library is an alternative implementation facilitating a bridge between numpy ndarrays and the MetaImage format.
 
 More about the format at <https://itk.org/Wiki/ITK/MetaIO/Documentation#Quick_Start>.
+Coordindate stuff: <https://simpleitk.readthedocs.io/en/master/Documentation/docs/source/fundamentalConcepts.html>.
 '''
 
 import sys
@@ -60,19 +61,19 @@ def read(self,filename):
 		self.header['NDims'] -= 1
 		self.header['DimSize'].pop()
 
-	# indata = np.asarray(np.fromfile(path.join(self.path,self.header['ElementDataFile']), dtype=datatype), order='F', dtype=datatype)
-	indata = np.asarray(np.fromfile(path.join(self.path,self.header['ElementDataFile']), dtype=datatype), order='C', dtype=datatype)
-
 	if len(indata) == reduce(lambda x, y: x*y, self.header['DimSize']):
 		self.nrvox = len(indata)
 	else:
 		raise IOError("The .mhd header info specified a different image size as was found in the .raw file.")
 
-	# self.imdata = indata.reshape(tuple(reversed(self.header['DimSize']))).swapaxes(0, self.header['NDims'] - 1)
-	if self.header['NDims'] == 4:
-		self.imdata = indata.reshape(tuple(self.header['DimSize'])).swapaxes(0, self.header['NDims'] - 1) # FIXME, should be switch...
-	else:
-		self.imdata = indata.reshape(tuple(self.header['DimSize']))
+	raw_data_order = 'F' #'F' met reshape/swapaxes, otherwise C
+	indata = np.asarray(np.fromfile(path.join(self.path,self.header['ElementDataFile']), dtype=datatype), order=raw_data_order, dtype=datatype)
+
+	self.imdata = indata.reshape(tuple(reversed(self.header['DimSize']))).swapaxes(0, self.header['NDims'] - 1)
+	# if self.header['NDims'] == 4:
+	# 	self.imdata = indata.reshape(tuple(self.header['DimSize'])).swapaxes(0, self.header['NDims'] - 1) # FIXME, should be switch...
+	# else:
+	# 	self.imdata = indata.reshape(tuple(self.header['DimSize']))
 
 
 def write(self,fullpath):
@@ -80,10 +81,10 @@ def write(self,fullpath):
 	fulloutraw = fullpath[:-4] + '.raw'
 	#tofile is Row-major ('C' order), so that's why it happens to go correctly w.r.t. the HZYX order.
 	# FIXME swapping axes should probably be a switch
-	if self.header['NDims'] == 4:
-		self.imdata.swapaxes(0, self.header['NDims'] - 1).tofile(fulloutraw)
-	else:
-		self.imdata.tofile(fulloutraw)
+	# if self.header['NDims'] == 4:
+	self.imdata.swapaxes(0, self.header['NDims'] - 1).tofile(fulloutraw)
+	# else:
+	# 	self.imdata.tofile(fulloutraw)
 	print("New raw file:",fulloutraw,file=sys.stderr)
 	with open(fullpath,'w+') as newheadf:
 		newheadf.writelines("%s\n" % l for l in __getheaderasstring(self))

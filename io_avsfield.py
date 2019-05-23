@@ -90,8 +90,8 @@ def write(self,infile):
 	if dchar == "h":
 		dchar = "i"
 	targettype = '>'+dchar+str(self.imdata.dtype.itemsize)
-	# self.imdata.swapaxes(0, ndim - 1).astype(targettype).tofile(fid)
-	self.imdata.astype(targettype).tofile(fid)
+	self.imdata.swapaxes(0, ndim - 1).astype(targettype).tofile(fid)
+	# self.imdata.astype(targettype).tofile(fid)
 
 	#write extents, looped pairwise over axis
 	#xmin,xmax,ymin,ymax,zmin,zmax
@@ -141,7 +141,7 @@ def read(self,infile):
 
 	size = reduce(operator.mul, shape)
 	raw_data = None
-	raw_data_order = 'C' #'F'
+	raw_data_order = 'F' #'F' met reshape/swapaxes, otherwise C
 
 	compression = 0
 	try:
@@ -224,10 +224,12 @@ def read(self,infile):
 	fid.close()
 
 	self.header = __build_header(infile,header)
-	self.imdata = raw_data.reshape(shape)
+	self.imdata = raw_data.reshape(tuple(reversed(shape))).swapaxes(0, ndim - 1)
+	# self.imdata = raw_data.reshape(shape)
 
 
 def __build_header(infile,xdrheader):
+	# lets round those floating point values a bit. 3 digits (==micrometer precision) enough for you?
 	newh = {}
 	newh['ObjectType'] = 'Image'
 	newh['ElementDataFile'] = '' #je moet toch wat
@@ -236,11 +238,11 @@ def __build_header(infile,xdrheader):
 	# newh['ElementType'] = xdrheader['ElementType']
 	newh['NDims'] = int(xdrheader['ndim'])
 	newh['TransformMatrix'] =  np.identity(newh['NDims']).flatten().tolist() # FIXME: read AVS transform from header or external field if present/provided.
-	newh['Offset'] = [x*10. for x in xdrheader['min_ext']]
+	newh['Offset'] = [round(x*10.,3) for x in xdrheader['min_ext']]
 	newh['ElementSpacing'] = []
 	for minn,maxx,nbin in zip(xdrheader['min_ext'],xdrheader['max_ext'],xdrheader['DimSize']):
 		# nbin-1 because bincenter to bincenter, *10 to go to mm.
-		newh['ElementSpacing'].append((maxx-minn)/float(nbin-1)*10.)
+		newh['ElementSpacing'].append(round((maxx-minn)/float(nbin-1)*10.,3))
 
 	# BinaryData = True
 	# BinaryDataByteOrderMSB = False

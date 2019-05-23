@@ -1,5 +1,4 @@
-import numpy as np
-import copy
+import numpy as np,scipy,copy
 
 '''
 Support mathematical operations. Take possibility of imdata being a masked array into account (using the filled() method mostly)
@@ -105,6 +104,28 @@ class math_class:
 		assert len(table)==2
 		assert len(table[0])==len(table[1])
 		self.imdata= np.interp(self.imdata,table[0],table[1]) #type will be different!
+
+	def resample(self, new_ElementSpacing=[1,1,1],order=1):
+		'''
+		Resample image. Provide the desired ElementSpacing to which will be interpolated. Note that these will be rounded to obtain integer nbins.
+
+		Spline interpolation can optionally be changed from bicubic.
+		'''
+		old_ElementSpacing = np.array(self.header['ElementSpacing'])
+		new_ElementSpacing = np.array(new_ElementSpacing)
+		new_real_shape = self.imdata.shape * old_ElementSpacing / new_ElementSpacing
+		new_shape = np.round(new_real_shape)
+		real_resize_factor = new_shape / self.imdata.shape
+		new_ElementSpacing = old_ElementSpacing / real_resize_factor
+		self.header['ElementSpacing'] = list(new_ElementSpacing)
+		self.header['DimSize'] = list(new_shape)
+
+		print('real_resize_factor',real_resize_factor)
+
+		self.imdata = scipy.ndimage.zoom(self.imdata, real_resize_factor,order=order)
+
+		if self.imdata.shape[0] < 1 or self.imdata.shape[1] < 1 or self.imdata.shape[2] < 1:
+			raise Exception('invalid image shape {}'.format(self.imdata.shape))
 
 	def compute_gamma(self,other,dta,dd, local=False):
 		assert type(other)==type(self)
