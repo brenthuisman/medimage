@@ -1,11 +1,10 @@
 '''
 Uses gdcm through SimpleITK.
 '''
-
-import SimpleITK as sitk
 from os import path
 
 def read(self,filename):
+	import SimpleITK as sitk #such that we don't require the package.
 	self.header = {}
 	sitk_image = None
 	#https://stackoverflow.com/questions/40483190/simpleitk-tif-to-numpy-array-and-back-to-tif-makes-file-size-bigger
@@ -38,6 +37,7 @@ def read(self,filename):
 
 def write(self,filename):
 	raise NotImplementedError("Writing to dicom objects is currently not validated.")
+	#import SimpleITK as sitk
 	# sitk_im = sitk.GetImageFromArray(self.imdata)
 	# print(sitk_im.GetPixelIDTypeAsString())
 	# sitk_im.SetOrigin(self.header['Offset'])
