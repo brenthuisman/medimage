@@ -1,5 +1,7 @@
 '''
 Uses gdcm through SimpleITK.
+
+TODO: use pydicom. for dicomdirs: contruct the 3D image ourselves. Loop over files in dir and use SliceLocation.
 '''
 from os import path
 
@@ -32,7 +34,7 @@ def read(self,filename):
 	self.imdata = self.imdata.reshape(tuple(reversed(self.imdata.shape))).swapaxes(0, self.header['NDims'] - 1)
 
 	# and no idea where this comes from...
-	self.imdata = self.imdata/1e3
+	#self.imdata = self.imdata/1e3
 
 
 def write(self,filename):
