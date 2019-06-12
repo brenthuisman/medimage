@@ -1,5 +1,6 @@
 import numpy as np,copy
 from scipy import ndimage
+import image
 
 '''
 Support mathematical operations. Take possibility of imdata being a masked array into account (using the filled() method mostly)
@@ -106,39 +107,56 @@ class math_class:
 		assert len(table[0])==len(table[1])
 		self.imdata= np.interp(self.imdata,table[0],table[1]) #type will be different!
 
-	def resample(self, new_ElementSpacing=[2,2,2],keep_DimSize=True,order=1):
-		'''
-		Resample image. Provide the desired ElementSpacing to which will be interpolated.
 
-		Note that new_ElementSpacing will be adjusted to obtain an integer image grid. You can set keep_DimSize to false to instead adjust DimSize. This may cause slight truncation of your images edges.
-
-		Spline interpolation can optionally be changed from bicubic.
+	def resample(self, new_ElementSpacing=[2,2,2], allowcrop=False, order=1):
 		'''
+		Resample image. Provide the desired ElementSpacing to which will be interpolated. Note that the spacing will be adjusted to obtain an integer image grid. Set allowcrop to True if you want to fix your new spacing and prefer to crop (subpixel distances) around the edges if necesary.
+		'''
+
 		old_ElementSpacing = np.array(self.header['ElementSpacing'])
 		new_ElementSpacing = np.array(new_ElementSpacing)
 		new_req_shape = self.imdata.shape * old_ElementSpacing / new_ElementSpacing
+		new_shape = np.round(new_req_shape)
 
-		if keep_DimSize:
+		if not allowcrop:
 			#We keep the extent of the image fixed, so we'll adjust the new_ElementSpacing such that it fits into the new shape.
-			new_shape = np.round(new_req_shape)
 			real_resize_factor = new_shape / self.imdata.shape
 			new_ElementSpacing = old_ElementSpacing / real_resize_factor
-			self.header['ElementSpacing'] = list(new_ElementSpacing)
-			self.header['DimSize'] = list(new_shape)
-		else:
-			#We keep the requested spacing fixed by truncating the edges. Since we can't add CT data, we must floor instead of round the shape.
-			new_shape = np.floor(new_req_shape)
-			# TODO FINISH replace all this with map_coordinates
-			# See https://github.com/scipy/scipy/issues/7324
 
-
-
-		print('real_resize_factor',real_resize_factor)
-
-		self.imdata = ndimage.zoom(self.imdata, real_resize_factor,order=order)
+		new_shape = tuple(int(i) for i in new_shape) #new image expects tuples
+		self.crop_as(image.image(ElementSpacing=new_ElementSpacing,Offset=self.header['Offset'],DimSize=new_shape))
 
 		if self.imdata.shape[0] < 1 or self.imdata.shape[1] < 1 or self.imdata.shape[2] < 1:
 			raise Exception('invalid image shape {}'.format(self.imdata.shape))
+
+
+	def crop_as(self,other,**kwargs):
+		'''
+		Calculates the voxelvalues of this image on the grid of the provided image (other).
+
+		Usage: create a new image, or use and existing one, with the desired grid, then supply that image to this function.
+
+		If the other grid lays (partially) outside of self, then the area outside is extended as per `scipy.ndimage.map_coordinates` defaults.
+		'''
+		assert type(other)==type(self)
+
+		# lets create indices for our new image
+		indices = np.indices(other.imdata.shape, dtype=np.float32)
+
+		#now, we must transform these "new self" array indices (which we define as the indices of `other`) to array indices of "old self".
+		#for this, we must go via the image indices, because those are in the same frame, unlike the image indices.
+		#starting with the new (`other`) array indices, how to we get to the old (`self`) image indices? Convert other to world index, because those are the same, and then convert world index to self array index.
+
+		for d in range(len(other.imdata.shape)):
+			# from other array index to world coord
+			worldcoord = indices[d]*other.header['ElementSpacing'][d]+other.header['Offset'][d]
+			# from world coord to self array index.
+			indices[d] = (worldcoord-self.header['Offset'][d])/self.header['ElementSpacing'][d]
+		self.imdata = ndimage.map_coordinates(self.imdata, indices, **kwargs)
+
+		# correct metadata:
+		self.header = copy.deepcopy(other.header)
+
 
 	def compute_gamma(self,other,dta,dd, local=False):
 		assert type(other)==type(self)
