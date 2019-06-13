@@ -108,7 +108,7 @@ class math_class:
 		self.imdata= np.interp(self.imdata,table[0],table[1]) #type will be different!
 
 
-	def resample(self, new_ElementSpacing=[2,2,2], allowcrop=False, order=1):
+	def resample(self, new_ElementSpacing=[2,2,2], allowcrop=True, order=1):
 		'''
 		Resample image. Provide the desired ElementSpacing to which will be interpolated. Note that the spacing will be adjusted to obtain an integer image grid. Set allowcrop to True if you want to fix your new spacing and prefer to crop (subpixel distances) around the edges if necesary.
 		'''
@@ -141,7 +141,7 @@ class math_class:
 		assert type(other)==type(self)
 
 		# lets create indices for our new image
-		indices = np.indices(other.imdata.shape, dtype=np.float32)
+		indices = np.indices(other.imdata.shape)
 
 		#now, we must transform these "new self" array indices (which we define as the indices of `other`) to array indices of "old self".
 		#for this, we must go via the image indices, because those are in the same frame, unlike the image indices.
@@ -152,7 +152,10 @@ class math_class:
 			worldcoord = indices[d]*other.header['ElementSpacing'][d]+other.header['Offset'][d]
 			# from world coord to self array index.
 			indices[d] = (worldcoord-self.header['Offset'][d])/self.header['ElementSpacing'][d]
-		self.imdata = ndimage.map_coordinates(self.imdata, indices, **kwargs)
+
+		# Interpolation can fail (generate zero value voxels instead of interpolated values) for unsigned int types. Therefore, lets convert to double precision for the interpolation.
+		olddtype=self.imdata.dtype
+		self.imdata = ndimage.map_coordinates(self.imdata.astype(np.float64), indices, **kwargs).astype(olddtype)
 
 		# correct metadata:
 		self.header = copy.deepcopy(other.header)

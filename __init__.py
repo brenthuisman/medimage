@@ -7,7 +7,7 @@ I started writing this lib because the Python bindings of ITK were difficult to 
 '''
 
 import numpy as np,copy,logging,sys,operator,collections
-from os import path
+from os import path,makedirs
 from functools import reduce
 from . import io_avsfield
 from . import io_metaimage
@@ -36,7 +36,9 @@ class image(math_class,mask_class):
 				io_dicom.read(self,infile)
 			else:
 				## TODO read first n bytes, determine possible filetype from there?
-				raise IOError("Unrecognized file extension, aborting.")
+				## For now, assume dicom.
+				io_dicom.read(self,infile)
+				# raise IOError("Unrecognized file extension, aborting.")
 			print(self.file,"loaded. Shape:",self.imdata.shape,file=sys.stderr)
 
 		elif len(args) > 0 and path.isdir(args[0]):
@@ -94,14 +96,21 @@ class image(math_class,mask_class):
 		if len(filename.split(path.sep)) == 1: #so nothing to split, ie no dirs
 			self.file = filename
 		else:
-			assert(path.isdir(path.split(filename)[0]))
+			if not path.isdir(path.split(filename)[0]):
+				makedirs(path.split(filename)[0])
+				print("New directory created:",path.split(filename)[0])
 			self.path,self.file = path.split(filename)
 		fullpath = path.join(self.path,self.file)
 
 		# VV doesnt support long, so we convert to int
 		if self.imdata.dtype == np.int64:
-			self.imdata = self.imdata.astype(np.int32, copy=False)
+			self.imdata = self.imdata.astype(np.intc)
 			print('MET_LONG not supported by many tools, so we autoconvert to MET_INT.',file=sys.stderr)
+
+		# unsigned int support never tested, dont wanna.
+		if self.imdata.dtype == np.uint16:
+			self.imdata = self.imdata.astype(np.intc)
+			print('uint16 not supported by some fileformats, so we autoconvert to MET_INT.',file=sys.stderr)
 
 		if type(self.imdata) == np.ma.core.MaskedArray:
 			print("Your masked array was squashed with the masked voxels set to",self.imdata.fill_value,file=sys.stderr)

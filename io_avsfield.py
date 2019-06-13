@@ -89,6 +89,8 @@ def write(self,infile):
 		dchar = "f"
 	if dchar == "h":
 		dchar = "i"
+	if dchar == "l":
+		dchar = "i"
 	targettype = '>'+dchar+str(self.imdata.dtype.itemsize)
 	self.imdata.swapaxes(0, ndim - 1).astype(targettype).tofile(fid)
 	# self.imdata.astype(targettype).tofile(fid)
