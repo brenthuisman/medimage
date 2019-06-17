@@ -85,20 +85,22 @@ class math_class:
 
 	def hu_to_density(self,hu2dens_table):
 		'''Convert this image from HU indices to materials densities, using the table you provide.'''
+		olddtype=self.imdata.dtype
 		self.map_values(hu2dens_table)
-		self.imdata=self.imdata.astype('<f4')
+		self.imdata=self.imdata.astype(oldtype)
 
 	def ct_to_hu(self,intercept,slope):
 		'''Convert this image from CT numbers to Hounsdield units, using the intercept and slope you provide.'''
-		self.imdata = intercept+slope*self.imdata
+		self.imdata = -intercept+slope*self.imdata
 
 	def density_to_materialindex(self,dens2mat_table):
 		'''Convert this image from material densities to (continuous) materials indices, using the table you provide.'''
+		olddtype=self.imdata.dtype
 		materials = copy.deepcopy(dens2mat_table[1])
 		dens2mat_table = copy.deepcopy(dens2mat_table)
 		dens2mat_table[1]=list(range(len(dens2mat_table[0]))) #create material indices
 		self.map_values(dens2mat_table)
-		self.imdata=self.imdata.astype('<f4')
+		self.imdata=self.imdata.astype(oldtype)
 		return materials # send to gpumcd
 
 	def map_values(self,table):
@@ -126,8 +128,9 @@ class math_class:
 		new_shape = tuple(int(i) for i in new_shape) #new image expects tuples
 		self.crop_as(image.image(ElementSpacing=new_ElementSpacing,Offset=self.header['Offset'],DimSize=new_shape))
 
-		if self.imdata.shape[0] < 1 or self.imdata.shape[1] < 1 or self.imdata.shape[2] < 1:
-			raise Exception('invalid image shape {}'.format(self.imdata.shape))
+		for s in self.imdata.shape:
+			if s < 1:
+				raise Exception('invalid image shape {}'.format(self.imdata.shape))
 
 
 	def crop_as(self,other,**kwargs):
