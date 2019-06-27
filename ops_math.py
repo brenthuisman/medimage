@@ -85,9 +85,7 @@ class math_class:
 
 	def hu_to_density(self,hu2dens_table):
 		'''Convert this image from HU indices to materials densities, using the table you provide.'''
-		olddtype=self.imdata.dtype
 		self.map_values(hu2dens_table)
-		self.imdata=self.imdata.astype(oldtype)
 
 	def ct_to_hu(self,intercept,slope):
 		'''Convert this image from CT numbers to Hounsdield units, using the intercept and slope you provide.'''
@@ -95,12 +93,10 @@ class math_class:
 
 	def density_to_materialindex(self,dens2mat_table):
 		'''Convert this image from material densities to (continuous) materials indices, using the table you provide.'''
-		olddtype=self.imdata.dtype
 		materials = copy.deepcopy(dens2mat_table[1])
 		dens2mat_table = copy.deepcopy(dens2mat_table)
 		dens2mat_table[1]=list(range(len(dens2mat_table[0]))) #create material indices
 		self.map_values(dens2mat_table)
-		self.imdata=self.imdata.astype(oldtype)
 		return materials # send to gpumcd
 
 	def map_values(self,table):
@@ -108,7 +104,6 @@ class math_class:
 		assert len(table)==2
 		assert len(table[0])==len(table[1])
 		self.imdata= np.interp(self.imdata,table[0],table[1]) #type will be different!
-
 
 	def resample(self, new_ElementSpacing=[2,2,2], allowcrop=True, order=1):
 		'''
@@ -131,7 +126,6 @@ class math_class:
 		for s in self.imdata.shape:
 			if s < 1:
 				raise Exception('invalid image shape {}'.format(self.imdata.shape))
-
 
 	def crop_as(self,other,**kwargs):
 		'''
@@ -157,35 +151,33 @@ class math_class:
 			indices[d] = (worldcoord-self.header['Offset'][d])/self.header['ElementSpacing'][d]
 
 		# Interpolation can fail (generate zero value voxels instead of interpolated values) for unsigned int types. Therefore, lets convert to double precision for the interpolation.
-		olddtype=self.imdata.dtype
-		self.imdata = ndimage.map_coordinates(self.imdata.astype(np.float64), indices, **kwargs).astype(olddtype)
+		oldtype=self.imdata.dtype
+		self.imdata = ndimage.map_coordinates(self.imdata.astype(np.float64), indices, **kwargs).astype(oldtype)
 
 		# correct metadata:
 		self.header = copy.deepcopy(other.header)
 
-
 	def compute_gamma(self,other,dta,dd, local=False):
-		assert type(other)==type(self)
+		'''
+		Requires pymedphys. Unfortunately, it's a _very_ slow calculation. Do not use unless you really have no other options.
+		'''
 
+		assert type(other)==type(self)
 		retval = self.copy()
 
-		from npgamma import calc_gamma
-		retval.imdata = calc_gamma(tuple(self.get_axes_labels()), self.imdata, tuple(other.get_axes_labels()), other.imdata, dta, self.max()*dd/100., 10, dta / 3, dta*2, np.inf, 16)
+		gamma_options = {
+			'dose_percent_threshold': dd,
+			'distance_mm_threshold': dta,
+			'lower_percent_dose_cutoff': 20,
+			'interp_fraction': 5,  # Should be 10 or more for more accurate results
+			'max_gamma': 2,
+			'random_subset': None,
+			'local_gamma': local,
+			'ram_available': 2**30  # 1 GB
+		}
 
-		# calc_gamma(
-		#     coords_reference, dose_reference,
-		#     coords_evaluation, dose_evaluation,
-		#     distance_threshold, dose_threshold,
-		#     lower_dose_cutoff=lower_dose_cutoff,
-		#     distance_step_size=distance_step_size,
-		#     maximum_test_distance=maximum_test_distance,
-		#     max_concurrent_calc_points=max_concurrent_calc_points,
-		#     num_threads=num_threads)
+		from pymedphys.gamma import gamma_shell, gamma_dicom
 
-		# from pymedphyData.gamma import gamma_shell
-		# retval.imdata = gamma_shell(tuple(self.get_axes_labels()), self.imdata, tuple(other.get_axes_labels()), other.imdata, dd, dta, 10, dta, 10, local, None, True)
-
-		# gamma_shell(coords_reference, dose_reference, coords_evaluation, dose_evaluation, dose_percent_threshold, distance_mm_threshold, lower_percent_dose_cutoff=20, interp_fraction=10, max_gamma=inf, local_gamma=False, global_normalisation=None, skip_when_passed=False)
+		retval.imdata = gamma_shell(tuple(self.get_axes_labels()), self.imdata, tuple(other.get_axes_labels()), other.imdata, **gamma_options)
 
 		return retval
-
