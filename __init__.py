@@ -27,24 +27,24 @@ class image(math_class,mask_class):
 	def __init__(self, *args, **kwargs):
 		if len(args) > 0 and path.isfile(args[0]):
 			infile = str(args[0])
-			self.path,self.file = path.split(infile)
+			self.path,self.file = path.split(infile,**kwargs)
 			if infile.endswith('.mhd'):
-				io_metaimage.read(self,infile)
+				io_metaimage.read(self,infile,**kwargs)
 			elif infile.endswith('.xdr') or infile.endswith('.fld'):
-				io_avsfield.read(self,infile)
+				io_avsfield.read(self,infile,**kwargs)
 			elif infile.endswith('.dcm'):
-				io_dicom.read(self,infile)
+				io_dicom.read(self,infile,**kwargs)
 			else:
 				## TODO read first n bytes, determine possible filetype from there?
 				## For now, assume dicom.
-				io_dicom.read(self,infile)
+				io_dicom.read(self,infile,**kwargs)
 				# raise IOError("Unrecognized file extension, aborting.")
 			print(self.file,"loaded. Shape:",self.imdata.shape,file=sys.stderr)
 
 		elif len(args) > 0 and path.isdir(args[0]):
 			# Assume dicomdir provided.
 			self.path = str(args[0])
-			io_dicom.read(self,self.path)
+			io_dicom.read(self,self.path,**kwargs)
 			print(self.path,"loaded. Shape:",self.imdata.shape,file=sys.stderr)
 
 		elif len(args) > 0 and not path.isfile(args[0]):
