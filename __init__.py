@@ -188,7 +188,22 @@ class image(math_class,mask_class):
 
 
 	def get_ctypes_pointer_to_data(self):
+		#https://stackoverflow.com/questions/33247262/the-corresponding-ctypes-type-of-a-numpy-dtype
 		import ctypes
-		typecodes = np.ctypeslib._get_typecodes()
-		ctypes_type = typecodes[self.imdata.__array_interface__['typestr']]
-		return self.imdata.ctypes.data_as(ctypes.POINTER(ctypes_type))
+		try:
+			typecodes = np.ctypeslib._get_typecodes()
+			ctypes_type = typecodes[self.imdata.__array_interface__['typestr']]
+			return self.imdata.ctypes.data_as(ctypes.POINTER(ctypes_type))
+		except AttributeError:
+			def get_typecodes():
+				ct = ctypes
+				simple_types = [
+					ct.c_byte, ct.c_short, ct.c_int, ct.c_long, ct.c_longlong,
+					ct.c_ubyte, ct.c_ushort, ct.c_uint, ct.c_ulong, ct.c_ulonglong,
+					ct.c_float, ct.c_double,
+				]
+
+				return {np.dtype(ctype).str: ctype for ctype in simple_types}
+			typecodes = get_typecodes()
+			ctypes_type = typecodes[self.imdata.__array_interface__['typestr']]
+			return self.imdata.ctypes.data_as(ctypes.POINTER(ctypes_type))
