@@ -84,6 +84,9 @@ class image(math_class,mask_class):
 	def ndim(self):
 		return self.header['NDims']
 
+	def zero_out(self):
+		self.imdata = np.zeros_like(self.imdata)
+
 
 	def saveas(self,filename=None):
 		''' If you applied any masks, these voxels will be set to zero unless you set fillval. '''

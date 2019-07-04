@@ -75,7 +75,7 @@ def read_sitk(self,filename):
 
 	# so yeah, BOTH seem to be needed...
 	self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
-	self.imdata = self.imdata.reshape(tuple(reversed(self.imdata.shape))).swapaxes(0, self.header['NDims'] - 1)
+	self.imdata = self.imdata.reshape(tuple(reversed(self.imdata.shape))).swapaxes(0, len(self.imdata.shape) - 1)
 
 
 def write(self,filename):
