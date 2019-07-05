@@ -89,7 +89,7 @@ class math_class:
 
 	def ct_to_hu(self,intercept,slope):
 		'''Convert this image from CT numbers to Hounsdield units, using the intercept and slope you provide.'''
-		self.imdata = -intercept+slope*self.imdata
+		self.imdata = intercept+slope*self.imdata
 
 	def density_to_materialindex(self,dens2mat_table):
 		'''Convert this image from material densities to (continuous) materials indices, using the table you provide.'''
