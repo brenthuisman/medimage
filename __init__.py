@@ -87,6 +87,9 @@ class image(math_class,mask_class):
 	def zero_out(self):
 		self.imdata = np.zeros_like(self.imdata)
 
+	def to_double(self):
+		self.imdata = self.imdata.astype('<f8')
+
 
 	def saveas(self,filename=None):
 		''' If you applied any masks, these voxels will be set to zero unless you set fillval. '''

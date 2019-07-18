@@ -3,7 +3,9 @@ from scipy import ndimage
 import image
 
 '''
-Support mathematical operations. Take possibility of imdata being a masked array into account (using the filled() method mostly)
+Support mathematical operations. Take possibility of imdata being a masked array into account (using the filled() method mostly).
+
+add/sub/mul/div methods invoke numpy methods, which may convert the type of your array to accomodate the result.
 '''
 
 class math_class:
@@ -23,9 +25,46 @@ class math_class:
 	def min(self):
 		return np.nanmin(np.ma.filled(self.imdata,fill_value=np.nan))
 
+	def argmax(self):
+		'''get index of highest value in image'''
+		return np.unravel_index(np.nanargmax(self.imdata),self.imdata.shape)
+
+	def argmin(self):
+		'''get index of lowest value in image'''
+		return np.unravel_index(np.nanargmin(self.imdata),self.imdata.shape)
+
 	def add(self,other):
-		assert self.imdata.shape == other.imdata.shape
-		self.imdata = self.imdata + other.imdata
+		if isinstance(other,image.image) and self.imdata.shape == other.imdata.shape:
+			self.imdata = np.add(self.imdata,other.imdata)
+		elif isinstance(other,float) or isinstance(other,int):
+			self.imdata = np.add(self.imdata,other)
+		else:
+			raise TypeError("You're trying to add an unknown type or a differently sized image!")
+
+	def sub(self,other):
+		if isinstance(other,image.image) and self.imdata.shape == other.imdata.shape:
+			self.imdata = np.subtract(self.imdata,other.imdata)
+		elif isinstance(other,float) or isinstance(other,int):
+			self.imdata = np.subtract(self.imdata,other)
+		else:
+			raise TypeError("You're trying to subtract an unknown type or a differently sized image!")
+
+	def mul(self,other):
+		if isinstance(other,image.image) and self.imdata.shape == other.imdata.shape:
+			self.imdata = np.multiply(self.imdata,other.imdata)
+		elif isinstance(other,float) or isinstance(other,int):
+			self.imdata = np.multiply(self.imdata,other)
+		else:
+			raise TypeError("You're trying to multiply an unknown type or a differently sized image!")
+
+	def div(self,other):
+		with np.errstate(divide='ignore', invalid='ignore'):
+			if isinstance(other,image.image) and self.imdata.shape == other.imdata.shape:
+				self.imdata = np.true_divide(self.imdata,other.imdata)
+			elif isinstance(other,float) or isinstance(other,int):
+				self.imdata = np.true_divide(self.imdata,other)
+			else:
+				raise TypeError("You're trying to subtract an unknown type or a differently sized image!")
 
 	def std(self):
 		return np.nanstd(np.ma.filled(self.imdata,fill_value=np.nan))
@@ -60,20 +99,8 @@ class math_class:
 	def normalize(self):
 		self.imdata = self.imdata/self.imdata.max()
 
-	def divide(self,N):
-		with np.errstate(divide='ignore', invalid='ignore'):
-			self.imdata = np.true_divide(self.imdata,N)
-
 	def clip_range(self,mini,maxi):
 		np.clip(self.imdata, mini, maxi,out=self.imdata)
-
-	def argmax(self):
-		'''get index of highest value in image'''
-		return np.unravel_index(np.nanargmax(self.imdata),self.imdata.shape)
-
-	def argmin(self):
-		'''get index of lowest value in image'''
-		return np.unravel_index(np.nanargmin(self.imdata),self.imdata.shape)
 
 	def fill_gaussian_noise(self,mean,perc):
 		assert 0. < perc < 100.
