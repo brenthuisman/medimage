@@ -178,6 +178,11 @@ class image(math_class,mask_class):
 		return [min(range(len(axli)), key=lambda i: abs(axli[i]-coor)) for axli,coor in zip(axl,coord)]
 
 
+	def get_value(self,coord,halfpixel=False):
+		''' get pixel value at coord '''
+		return self.imdata.item(tuple(self.get_pixel_index(coord,halfpixel)))
+
+
 	def get_profiles_at_index(self,idx):
 		''' Returns the prependicular profiles through an index. '''
 		assert len(idx)==len(self.imdata.shape)
