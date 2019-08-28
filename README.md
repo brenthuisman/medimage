@@ -24,19 +24,19 @@ Currently, the `pymedphys` component is NOT installed automatically, which is re
 
 ## Usage
 
-After installation, you should be able to instantiate `image` classes like so:
+After installation, you should be able to open and save an image like so:
 
 	from medimage import image
 	myfirstimage = image("somefile.xdr")
+	myfirstimage.saveas("somefile.mhd")
 
 `image`s are instatiated with a string representing a file location, where the file extension indicates filetype. If not known extension is found, it assumes you're providing a dicom image or a dicom directory (of images).
 
 Alternatively, you can make a new zeroed out image of 30 by 40 by 50 voxels, spaced out 2mm in each dimension, centered at zero, like so:
 
 	from medimage import image
-	myblankimage = image.(DimSize=[30,40,50],ElementSpacing=[2,2,2],Offset=[0,0,0])
-
-An optional `par2deep.ini` file may be placed in the target directory or as `~/.par2deep` defining all the commandline options. For the excludes, separate by comma.
+	myblankimage = image(DimSize=[30,40,50],ElementSpacing=[2,2,2],Offset=[0,0,0])
+	myblackimage.saveas("empty.mhd")
 
 ## Some DVH parameters
 
