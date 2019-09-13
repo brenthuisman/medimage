@@ -17,6 +17,7 @@ def read(self,filename,**kwargs):
 	self.header = {}
 	dcm=None
 
+
 	if path.isfile(filename):
 		dcm = pydicom.dcmread(filename)
 		self.imdata = dcm.pixel_array
@@ -46,6 +47,10 @@ def read(self,filename,**kwargs):
 	self.header['Offset'] = [float(i) for i in dcm.ImagePositionPatient]
 	self.header['DimSize'] = list(self.imdata.shape)
 	self.header['NDims'] = len(self.imdata.shape)
+
+	self.ct_to_hu(float(dcm.RescaleIntercept),float(dcm.RescaleSlope))
+
+	self.PatientPosition = str(dcm.PatientPosition)
 
 
 def read_sitk(self,filename):

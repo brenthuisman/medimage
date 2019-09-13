@@ -198,13 +198,31 @@ class image(math_class,mask_class):
 		return profiles
 
 
-	def get_ctypes_pointer_to_data(self):
+	def get_slices_at_index(self,idx=None):
+		''' Returns the prependicular slices through an index. '''
+		if idx==None:
+			idx=[int(i/2.) for i in self.imdata.shape]
+		assert len(idx)==len(self.imdata.shape)
+
+		profiles = []
+
+		# tmp = np.reshape(self.imdata,self.imdata.shape[::-1])#.flatten()
+		# tmp = np.reshape(tmp,self.imdata.shape)
+
+		for axi in range(len(self.imdata.shape)):#[::-1]:
+			print(axi,idx[axi])
+			profile = np.moveaxis(self.imdata,axi,0)[idx[axi]]
+			# profile = self.imdata.T[idx[axi]]
+			profiles.append(profile)
+		return profiles #actually,slices
+
+
+	def get_ctypes_pointer_to_data(self,extern_array=None):
 		#https://stackoverflow.com/questions/33247262/the-corresponding-ctypes-type-of-a-numpy-dtype
 		import ctypes
+		typecodes=None
 		try:
 			typecodes = np.ctypeslib._get_typecodes()
-			ctypes_type = typecodes[self.imdata.__array_interface__['typestr']]
-			return self.imdata.ctypes.data_as(ctypes.POINTER(ctypes_type))
 		except AttributeError:
 			def get_typecodes():
 				ct = ctypes
@@ -216,5 +234,10 @@ class image(math_class,mask_class):
 
 				return {np.dtype(ctype).str: ctype for ctype in simple_types}
 			typecodes = get_typecodes()
-			ctypes_type = typecodes[self.imdata.__array_interface__['typestr']]
+		ctypes_type = typecodes[self.imdata.__array_interface__['typestr']]
+
+		if extern_array is None:
 			return self.imdata.ctypes.data_as(ctypes.POINTER(ctypes_type))
+		else:
+			return extern_array.ctypes.data_as(ctypes.POINTER(ctypes_type))
+
