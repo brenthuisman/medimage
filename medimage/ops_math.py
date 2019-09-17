@@ -1,6 +1,6 @@
 import numpy as np,copy
 from scipy import ndimage
-import image
+import medimage as image
 
 '''
 Support mathematical operations. Take possibility of imdata being a masked array into account (using the filled() method mostly).
