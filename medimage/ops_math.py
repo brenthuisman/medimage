@@ -126,11 +126,15 @@ class math_class:
 		self.map_values(dens2mat_table)
 		return materials # send to gpumcd
 
+	def scale_values(self,rangemin,rangemax):
+		''' Linear rescale of the pixelvalues to the provided interval. '''
+		self.map_values([[self.imdata.min(),self.imdata.max()][rangemin,rangemax]])
+
 	def map_values(self,table):
-		'''Map the imdata-values of this image using the table you supply. This table should be a list of two equally long list, where the first list maps to the current imdata-values, and the second to where you want them mapped. This function interpolates linearly, and does NOT extrapolate.'''
+		'''Map the imdata-values of this image using the table you supply. This table should be a list of two equally long lists, where the first list maps to the current imdata-values, and the second to where you want them mapped. This function interpolates linearly, and does NOT extrapolate.'''
 		assert len(table)==2
 		assert len(table[0])==len(table[1])
-		self.imdata= np.interp(self.imdata,table[0],table[1]) #type will be different!
+		self.imdata = np.interp(self.imdata,table[0],table[1]) #type will be different!
 
 	def resample(self, new_ElementSpacing=[2,2,2], allowcrop=True, order=1):
 		'''
