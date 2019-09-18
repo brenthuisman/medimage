@@ -206,13 +206,8 @@ class image(math_class,mask_class):
 
 		profiles = []
 
-		# tmp = np.reshape(self.imdata,self.imdata.shape[::-1])#.flatten()
-		# tmp = np.reshape(tmp,self.imdata.shape)
-
-		for axi in range(len(self.imdata.shape)):#[::-1]:
-			print(axi,idx[axi])
+		for axi in range(len(self.imdata.shape)):
 			profile = np.moveaxis(self.imdata,axi,0)[idx[axi]]
-			# profile = self.imdata.T[idx[axi]]
 			profiles.append(profile)
 		return profiles #actually,slices
 

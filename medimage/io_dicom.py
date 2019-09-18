@@ -48,9 +48,11 @@ def read(self,filename,**kwargs):
 	self.header['DimSize'] = list(self.imdata.shape)
 	self.header['NDims'] = len(self.imdata.shape)
 
-	self.ct_to_hu(float(dcm.RescaleIntercept),float(dcm.RescaleSlope))
-
-	self.PatientPosition = str(dcm.PatientPosition)
+	try:
+		self.ct_to_hu(float(dcm.RescaleIntercept),float(dcm.RescaleSlope))
+		self.PatientPosition = str(dcm.PatientPosition)
+	except:
+		print("This image appears not to be a CT, so I won't apply the rescaling that was not found!")
 
 
 def read_sitk(self,filename):

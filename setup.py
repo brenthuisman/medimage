@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 from setuptools import setup
 
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 
 def main():
     setup(name='medimage',
