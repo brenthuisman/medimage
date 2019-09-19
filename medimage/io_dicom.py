@@ -19,14 +19,14 @@ def read(self,filename,**kwargs):
 
 
 	if path.isfile(filename):
-		dcm = pydicom.dcmread(filename)
+		dcm = pydicom.dcmread(filename,force=True)
 		self.imdata = dcm.pixel_array
 		self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
 		self.imdata = self.imdata.reshape(tuple(reversed(self.imdata.shape))).swapaxes(0, len(self.imdata.shape) - 1)
 
 	elif path.isdir(filename):
 		#probably 3D
-		dcm_slices = [pydicom.dcmread(f) for f in glob.glob(path.join(filename,'*'))]
+		dcm_slices = [pydicom.dcmread(f,force=True) for f in glob.glob(path.join(filename,'*'))]
 		dcm_slices = sorted(dcm_slices, key=lambda x: float(x.SliceLocation))
 		dcm=dcm_slices[0]
 		shape = (int(dcm.Rows), int(dcm.Columns), len(dcm_slices))
@@ -48,11 +48,19 @@ def read(self,filename,**kwargs):
 	self.header['DimSize'] = list(self.imdata.shape)
 	self.header['NDims'] = len(self.imdata.shape)
 
+	## A few pieces of metadata that may be useful
 	try:
 		self.ct_to_hu(float(dcm.RescaleIntercept),float(dcm.RescaleSlope))
-		self.PatientPosition = str(dcm.PatientPosition)
 	except:
 		print("This image appears not to be a CT, so I won't apply the rescaling that was not found!")
+	try:
+		self.PatientPosition = str(dcm.PatientPosition)
+	except:
+		pass
+	try:
+		self.DoseSummationType = str(dcm.DoseSummationType)
+	except:
+		pass
 
 
 def read_sitk(self,filename):
