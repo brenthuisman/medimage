@@ -2,7 +2,8 @@
 
 This library supports r/w MetaImage (MHD,ITK) and r/w AVSField (.xdr) images, including NKI compressed images (read-only, useful to work with your Elekta images). The `image` class is a thin wrapper around typed numpy array objects (the `.imdata` member) such that you can easily work with images in these data formats. Slicing, projections, mathematical operations, masking, stuff like that is very easy with numpy, so you can easily extend things to what you need.
 
-Included are some basic mathematical operations, some masking functions and crop and resampling functions. Of particular interest perhaps are the DVH analysis function, and the distance to agreement calculation (entirely based on the `gamma` component in [pymedphys](https://github.com/pymedphys/pymedphys). This calculation is quite slow though. For [NKI decompression](https://gitlab.com/plastimatch/plastimatch/tree/master/libs/nkidecompress) I supply a 64bit Linux and Windows lib, if you need support for other platforms you can compile the function in `medimage/nki_decomp` yourself. This component is governed by its own license.
+Included are some basic mathematical operations, some masking functions and crop and resampling functions. Of particular interest perhaps are the DVH analysis function, and the distance to agreement calculation (entirely based on the `gamma` component in [pymedphys](https://github.com/pymedphys/pymedphys)). This calculation is quite slow though. For [NKI decompression](https://gitlab.com/plastimatch/plastimatch/tree/master/libs/nkidecompress) I supply a 64bit Linux and Windows lib, if you need support for other platforms you can compile the function in `medimage/nki_decomp` yourself. This component is governed by its own license.
+
 
 ## Motivation
 
