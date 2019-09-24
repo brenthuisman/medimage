@@ -84,6 +84,15 @@ class image(math_class,mask_class):
 	def ndim(self):
 		return self.header['NDims']
 
+	def origin(self):
+		return self.offset()
+
+	def offset(self):
+		return self.header['Offset']
+
+	def spacing(self):
+		return self.header['ElementSpacing']
+
 	def zero_out(self):
 		self.imdata = np.zeros_like(self.imdata)
 

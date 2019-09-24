@@ -188,7 +188,7 @@ class math_class:
 		# correct metadata:
 		self.header = copy.deepcopy(other.header)
 
-	def compute_gamma(self,other,dta,dd, local=False):
+	def compute_gamma_2(self,other,dta=3.,dd=3., local=False):
 		'''
 		Requires pymedphys. Unfortunately, it's a _very_ slow calculation. Do not use unless you really have no other options.
 		'''
@@ -201,7 +201,7 @@ class math_class:
 			'distance_mm_threshold': dta,
 			'lower_percent_dose_cutoff': 20,
 			'interp_fraction': 5,  # Should be 10 or more for more accurate results
-			'max_gamma': 2,
+			'max_gamma': 15,
 			'random_subset': None,
 			'local_gamma': local,
 			'ram_available': 2**30  # 1 GB
@@ -212,3 +212,85 @@ class math_class:
 		retval.imdata = gamma_shell(tuple(self.get_axes_labels()), self.imdata, tuple(other.get_axes_labels()), other.imdata, **gamma_options)
 
 		return retval
+
+	def compute_gamma(self,other,dta=3.,dd=3., ddpercent=True,threshold=0.,defvalue=-1.,verbose=False):
+		"""
+		Compare two images with equal geometry, using the gamma index formalism as introduced by Daniel Low (1998).
+		* ddpercent indicates "dose difference" scale as a relative value, in units percent (the dd value is this percentage of the max dose in the reference image)
+		* ddabs indicates "dose difference" scale as an absolute value
+		* dta indicates distance scale ("distance to agreement") in millimeter (e.g. 3mm)
+		* threshold indicates minimum dose value (exclusive) for calculating gamma values: target voxels with dose<=threshold are skipped and get assigned gamma=defvalue.
+		Returns an image with the same geometry as the target image.
+		For all target voxels that have d>threshold, a gamma index value is given.
+		For all other voxels the "defvalue" is given.
+		If geometries of the input images are not equal, then a `ValueError` is raised.
+
+		Adapted from gamma_index_3d_equal_geometry in https://github.com/OpenGATE/GateTools/blob/master/gatetools/gamma_index.py, which is governed by the Apache 2 license.
+		"""
+
+		def _reldiff2(dref,dtarget,ddref):
+			"""
+			Convenience function for implementation of the following functions.
+			The arguments `dref` and `dtarget` maybe scalars or arrays.
+			The calling code is responsible for avoiding division by zero (make sure that ddref>0).
+			"""
+			ddiff=dtarget-dref
+			reldd2=(ddiff/ddref)**2
+			return reldd2
+
+		aref=self.imdata
+		atarget=other.imdata
+		if aref.shape != atarget.shape:
+			raise ValueError("input images have different geometries ({} vs {} voxels)".format(aref.shape,atarget.shape))
+		if not np.allclose(self.spacing(),other.spacing()):
+			raise ValueError("input images have different geometries ({} vs {} spacing)".format(self.spacing(),other.spacing()))
+		if not np.allclose(self.origin(),other.origin()):
+			raise ValueError("input images have different geometries ({} vs {} origin)".format(self.origin(),other.origin()))
+		if ddpercent:
+			dd *= 0.01*np.max(aref)
+		relspacing = np.array(self.spacing(),dtype=float)/dta
+		inv_spacing = np.ones(3,dtype=float)/relspacing
+		g00=np.ones(aref.shape,dtype=float)*-1
+		mask=atarget>threshold
+		g00[mask]=np.sqrt(_reldiff2(aref[mask],atarget[mask],dd))
+		nx,ny,nz = atarget.shape
+		ntot = nx*ny*nz
+		nmask = np.sum(mask)
+		ndone = 0
+		if verbose:
+			print("Both images have {} x {} x {} = {} voxels.".format(nx,ny,nz,ntot))
+			print("{} target voxels have a dose > {}.".format(nmask,threshold))
+		g2 = np.zeros((nx,ny,nz),dtype=float)
+		for x in range(nx):
+			for y in range(ny):
+				for z in range(nz):
+					if g00[x,y,z] < 0:
+						continue
+					igmax=np.round(g00[x,y,z]*inv_spacing).astype(int) # maybe we should use "floor" instead of "round"
+					if (igmax==0).all():
+						g2[x,y,z]=g00[x,y,z]**2
+					else:
+						ixmin = max(x-igmax[0],0)
+						ixmax = min(x+igmax[0]+1,nx)
+						iymin = max(y-igmax[1],0)
+						iymax = min(y+igmax[1]+1,ny)
+						izmin = max(z-igmax[2],0)
+						izmax = min(z+igmax[2]+1,nz)
+						ix,iy,iz = np.meshgrid(np.arange(ixmin,ixmax),
+											np.arange(iymin,iymax),
+											np.arange(izmin,izmax),indexing='ij')
+						g2mesh = _reldiff2(aref[ix,iy,iz],atarget[x,y,z],dd)
+						g2mesh += ((relspacing[0]*(ix-x)))**2
+						g2mesh += ((relspacing[1]*(iy-y)))**2
+						g2mesh += ((relspacing[2]*(iz-z)))**2
+						g2[x,y,z] = np.min(g2mesh)
+					ndone += 1
+					if verbose and ((ndone % 1000) == 0):
+						print("{0:.1f}% done...\r".format(ndone*100.0/nmask),end='')
+		g=np.sqrt(g2)
+		g[np.logical_not(mask)]=defvalue
+		gimg=self.copy()
+		gimg.imdata = g.astype(np.float32).copy()
+		if verbose:
+			print("100% done!     ")
+		return gimg
