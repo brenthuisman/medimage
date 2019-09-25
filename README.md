@@ -110,7 +110,6 @@ Say you have a dose calculation and you want to have some DVH metrics (say, Dmax
 
  * numpy
  * pydicom
- * optional: pymedphys
 
 ### Changelog
 

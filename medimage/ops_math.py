@@ -188,31 +188,6 @@ class math_class:
 		# correct metadata:
 		self.header = copy.deepcopy(other.header)
 
-	def compute_gamma_2(self,other,dta=3.,dd=3., local=False):
-		'''
-		Requires pymedphys. Unfortunately, it's a _very_ slow calculation. Do not use unless you really have no other options.
-		'''
-
-		assert type(other)==type(self)
-		retval = self.copy()
-
-		gamma_options = {
-			'dose_percent_threshold': dd,
-			'distance_mm_threshold': dta,
-			'lower_percent_dose_cutoff': 20,
-			'interp_fraction': 5,  # Should be 10 or more for more accurate results
-			'max_gamma': 15,
-			'random_subset': None,
-			'local_gamma': local,
-			'ram_available': 2**30  # 1 GB
-		}
-
-		from pymedphys.gamma import gamma_shell, gamma_dicom
-
-		retval.imdata = gamma_shell(tuple(self.get_axes_labels()), self.imdata, tuple(other.get_axes_labels()), other.imdata, **gamma_options)
-
-		return retval
-
 	def compute_gamma(self,other,dta=3.,dd=3., ddpercent=True,threshold=0.,defvalue=-1.,verbose=False):
 		"""
 		Compare two images with equal geometry, using the gamma index formalism as introduced by Daniel Low (1998).
