@@ -5,54 +5,60 @@ Optionally uses gdcm through SimpleITK.
 '''
 import glob,pydicom,numpy as np
 from os import path
+try:
+	import SimpleITK as sitk
+	SITK_PRESENT = True
+except:
+	SITK_PRESENT = False
+
 
 def read(self,filename,**kwargs):
 	'''
 	TODO: account for PatientPosition (HFS and so on)
 	'''
-	if 'sitk' in kwargs and kwargs['sitk']:
-		read_sitk(self,filename)
-		return
-
 	self.header = {}
 	dcm=None
-
-
+	dcm_slices=None
 	if path.isfile(filename):
 		dcm = pydicom.dcmread(filename,force=True)
-		self.imdata = dcm.pixel_array
-		self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
-		self.imdata = self.imdata.reshape(tuple(reversed(self.imdata.shape))).swapaxes(0, len(self.imdata.shape) - 1)
-
 	elif path.isdir(filename):
 		#probably 3D
 		dcm_slices = [pydicom.dcmread(f,force=True) for f in glob.glob(path.join(filename,'*'))]
 		dcm_slices = sorted(dcm_slices, key=lambda x: float(x.SliceLocation))
 		dcm=dcm_slices[0]
-		shape = (int(dcm.Rows), int(dcm.Columns), len(dcm_slices))
-		# self.imdata = np.vstack((sl.pixel_array for sl in dcm_slices))
-		self.imdata = np.zeros(shape, dtype=dcm.pixel_array.dtype)
-		for i,sl in enumerate(dcm_slices):
-			pa = sl.pixel_array
-			pa = pa.reshape(pa.shape[::-1])
-			pa = pa.reshape(tuple(reversed(pa.shape))).swapaxes(0, len(pa.shape) - 1)
-			self.imdata[:,:,i] = pa
+	if SITK_PRESENT:
+		read_sitk(self,filename)
+	else: #non sitk path
+		if path.isfile(filename):
+			dcm = pydicom.dcmread(filename,force=True)
+			self.imdata = dcm.pixel_array
+			self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
+			self.imdata = self.imdata.reshape(tuple(reversed(self.imdata.shape))).swapaxes(0, len(self.imdata.shape) - 1)
+		elif path.isdir(filename):
+			shape = (int(dcm.Rows), int(dcm.Columns), len(dcm_slices))
+			# self.imdata = np.vstack((sl.pixel_array for sl in dcm_slices))
+			self.imdata = np.zeros(shape, dtype=dcm.pixel_array.dtype)
+			for i,sl in enumerate(dcm_slices):
+				pa = sl.pixel_array
+				pa = pa.reshape(pa.shape[::-1])
+				pa = pa.reshape(tuple(reversed(pa.shape))).swapaxes(0, len(pa.shape) - 1)
+				self.imdata[:,:,i] = pa
+		try:
+			self.header['ElementSpacing'] = [float(dcm.PixelSpacing[0]), float(dcm.PixelSpacing[1]), float(dcm.SliceThickness)]
+			#[dcm.SliceThickness]+list(dcm.PixelSpacing[::-1])
+		except:
+			self.header['ElementSpacing'] = [float(dcm.PixelSpacing[0]), float(dcm.PixelSpacing[1])]
 
-	try:
-		self.header['ElementSpacing'] = [float(dcm.PixelSpacing[0]), float(dcm.PixelSpacing[1]), float(dcm.SliceThickness)]
-		#[dcm.SliceThickness]+list(dcm.PixelSpacing[::-1])
-	except:
-		self.header['ElementSpacing'] = [float(dcm.PixelSpacing[0]), float(dcm.PixelSpacing[1])]
+		self.header['Offset'] = [float(i) for i in dcm.ImagePositionPatient]
+		self.header['DimSize'] = list(self.imdata.shape)
+		self.header['NDims'] = len(self.imdata.shape)
 
-	self.header['Offset'] = [float(i) for i in dcm.ImagePositionPatient]
-	self.header['DimSize'] = list(self.imdata.shape)
-	self.header['NDims'] = len(self.imdata.shape)
-
-	## A few pieces of metadata that may be useful
-	try:
-		self.ct_to_hu(float(dcm.RescaleIntercept),float(dcm.RescaleSlope))
-	except:
-		print("This image appears not to be a CT, so I won't apply the rescaling that was not found!")
+		## A few pieces of metadata that may be useful
+		try:
+			self.ct_to_hu(float(dcm.RescaleIntercept),float(dcm.RescaleSlope))
+		except:
+			print("This image appears not to be a CT, so I won't apply the rescaling that was not found!")
+		#end of non sitk path
 	try:
 		self.PatientPosition = str(dcm.PatientPosition)
 	except:
@@ -64,8 +70,6 @@ def read(self,filename,**kwargs):
 
 
 def read_sitk(self,filename):
-	print("HOERA!!!!!")
-	import SimpleITK as sitk #such that we don't require the package.
 	self.header = {}
 	sitk_image = None
 	#https://stackoverflow.com/questions/40483190/simpleitk-tif-to-numpy-array-and-back-to-tif-makes-file-size-bigger
@@ -94,4 +98,10 @@ def read_sitk(self,filename):
 
 
 def write(self,filename):
-	raise NotImplementedError("Writing to dicom objects is currently not validated.")
+	if SITK_PRESENT:
+		img=sitk.GetImageFromArray(self.imdata)
+		img.SetSpacing(self.spacing())
+		img.SetOrigin(self.offset())
+		sitk.WriteImage(img,filename,False) #no compression
+	else:
+		raise ImportError("No SimpleITK present on this system, can't write dicom files...")

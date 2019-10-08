@@ -27,7 +27,7 @@ class image(math_class,mask_class):
 	def __init__(self, *args, **kwargs):
 		if len(args) > 0 and path.isfile(args[0]):
 			infile = str(args[0])
-			self.path,self.file = path.split(infile,**kwargs)
+			self.path,self.file = path.split(infile)
 			if infile.endswith('.mhd'):
 				io_metaimage.read(self,infile,**kwargs)
 			elif infile.endswith('.xdr') or infile.endswith('.fld'):
@@ -164,6 +164,8 @@ class image(math_class,mask_class):
 			io_avsfield.write(self,fullpath)
 		elif self.file.endswith('.dcm'):
 			io_dicom.write(self,fullpath)
+		# else: # TODO
+		# 	io_dicom.write(self,fullpath)
 
 		return fullpath
 
