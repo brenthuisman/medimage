@@ -1,8 +1,10 @@
 ## medimage
 
-This library supports r/w MetaImage (MHD,ITK) and r/w AVSField (.xdr) images, including NKI compressed images (read-only, useful to work with your Elekta images). The `image` class is a thin wrapper around typed numpy array objects (the `.imdata` member) such that you can easily work with images in these data formats. Slicing, projections, mathematical operations, masking, stuff like that is very easy with numpy, so you can easily extend things to what you need.
+This library supports r/w MetaImage (MHD,ITK), r/w AVSField (.xdr) and r/w Dicom images. XDR reading includes NKI compressed images (useful to work with your Elekta images). The `image` class is a thin wrapper around typed numpy array objects (the `.imdata` member) such that you can easily work with images in these data formats. Slicing, projections, mathematical operations, masking, stuff like that is very easy with numpy, so you can easily extend things to what you need.
 
 Included are some basic mathematical operations, some masking functions and crop and resampling functions. Of particular interest perhaps are the DVH analysis function, and the distance to agreement calculation. This calculation is quite slow though. For [NKI decompression](https://gitlab.com/plastimatch/plastimatch/tree/master/libs/nkidecompress) I supply a 64bit Linux and Windows lib, if you need support for other platforms you can compile the function in `medimage/nki_decomp` yourself. This component is governed by its own license.
+
+Dicom write support *requires* SimpleITK, but since you may not care, this package won't install it for you and simply fail to save to dicom if SimpleITK is not found. If SimpleITK is found, it will *also* be used for dicom reading, because based on my limited testing, it's a bit more forgiving with the validity of input files.
 
 
 ## Motivation
@@ -110,6 +112,7 @@ Say you have a dose calculation and you want to have some DVH metrics (say, Dmax
 
  * numpy
  * pydicom
+ * Optional (Dicom write): SimpleITK.
 
 ### Changelog
 

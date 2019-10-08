@@ -99,6 +99,13 @@ def read_sitk(self,filename):
 
 def write(self,filename):
 	if SITK_PRESENT:
+		if str(self.imdata.dtype).startswith('float'):
+			print("The dicom file format does not support floating point data types.")
+			print("Multiplying all voxels by 100 and setting slope to 0.01 to preserve precision of a percentage.")
+			img=sitk.GetImageFromArray((self.imdata*100).astype(np.uint16))
+			img.SetMetaData("0028|1053","0.01") #slope
+			img.SetMetaData("0028|1052","0") #intercept
+		else:
 		img=sitk.GetImageFromArray(self.imdata)
 		img.SetSpacing(self.spacing())
 		img.SetOrigin(self.offset())
