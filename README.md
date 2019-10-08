@@ -4,7 +4,7 @@ This library supports r/w MetaImage (MHD,ITK), r/w AVSField (.xdr) and r/w Dicom
 
 Included are some basic mathematical operations, some masking functions and crop and resampling functions. Of particular interest perhaps are the DVH analysis function, and the distance to agreement calculation. This calculation is quite slow though. For [NKI decompression](https://gitlab.com/plastimatch/plastimatch/tree/master/libs/nkidecompress) I supply a 64bit Linux and Windows lib, if you need support for other platforms you can compile the function in `medimage/nki_decomp` yourself. This component is governed by its own license.
 
-Dicom write support *requires* SimpleITK, but since you may not care, this package won't install it for you and simply fail to save to dicom if SimpleITK is not found. If SimpleITK is found, it will *also* be used for dicom reading, because based on my limited testing, it's a bit more forgiving with the validity of input files.
+Dicom write support *requires* `SimpleITK`, primarily because `pydicom` does not support dicom image write... Since you may not care, `medimage` package won't install `SimpleITK` for you and simply fail to save to dicom if `SimpleITK` is not found. *If* `SimpleITK` is found, it will *also* be used for dicom reading, because based on my limited testing, it's a bit more forgiving with the validity of input files.
 
 
 ## Motivation
@@ -116,6 +116,7 @@ Say you have a dose calculation and you want to have some DVH metrics (say, Dmax
 
 ### Changelog
 
+ * 2019-10-08: v1.0.5: Dicom write, relicense to Apache 2.0
  * 2019-09-24: v1.0.4: New and much faster gamma computation (order of 5 minutes)
  * 2019-08-28: v1.0.3: Fixed a few sloppy bugs. Added CT rescaling when openingen Dicom image.
  * 2019-08-28: v1.0.0: Separated `image` class into its own `medimage` module.
