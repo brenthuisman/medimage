@@ -67,7 +67,6 @@ class image(math_class,mask_class):
 
 			if 'dt' not in kwargs:
 				kwargs['dt'] = '<f8'
-			print
 			self.imdata = np.zeros(self.header['DimSize'], dtype=kwargs['dt'])
 			print("New image created. Shape:",self.imdata.shape,", Type:",kwargs['dt'],file=sys.stderr)
 
@@ -164,8 +163,10 @@ class image(math_class,mask_class):
 			io_avsfield.write(self,fullpath)
 		elif self.file.endswith('.dcm'):
 			io_dicom.write(self,fullpath)
-		# else: # TODO
-		# 	io_dicom.write(self,fullpath)
+		else:
+			io_dicom.write(self,fullpath)
+
+		print("New file:",fullpath,file=sys.stderr)
 
 		return fullpath
 

@@ -116,7 +116,8 @@ Say you have a dose calculation and you want to have some DVH metrics (say, Dmax
 
 ### Changelog
 
- * 2019-10-08: v1.0.5: Dicom write, relicense to Apache 2.0
+ * 2019-10-08: v1.0.6: Bugfix, dicom write still incomplete.
+ * 2019-10-08: v1.0.5: Dicom write
  * 2019-09-24: v1.0.4: New and much faster gamma computation (order of 5 minutes)
  * 2019-08-28: v1.0.3: Fixed a few sloppy bugs. Added CT rescaling when openingen Dicom image.
  * 2019-08-28: v1.0.0: Separated `image` class into its own `medimage` module.

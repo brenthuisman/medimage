@@ -81,7 +81,6 @@ def write(self,fullpath):
 	print("New raw file:",fulloutraw,file=sys.stderr)
 	with open(fullpath,'w+') as newheadf:
 		newheadf.writelines("%s\n" % l for l in __getheaderasstring(self))
-	print("New mhd file:",fullpath,file=sys.stderr)
 
 
 def __getheaderasstring(self):

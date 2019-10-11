@@ -103,7 +103,6 @@ def write(self,infile):
 		exts[2*i+1] = ma
 	exts.tofile(fid)
 	fid.close()
-	print("New xdr file:",infile,file=sys.stderr)
 
 
 def read(self,infile):
