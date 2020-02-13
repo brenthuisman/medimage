@@ -49,6 +49,11 @@ def read(self,filename,**kwargs):
 		except:
 			self.header['ElementSpacing'] = [float(dcm.PixelSpacing[0]), float(dcm.PixelSpacing[1])]
 
+		try:
+			self.mul(dcm.DoseGridScaling) #doses may have this
+		except:
+			pass
+
 		self.header['Offset'] = [float(i) for i in dcm.ImagePositionPatient]
 		self.header['DimSize'] = list(self.imdata.shape)
 		self.header['NDims'] = len(self.imdata.shape)
