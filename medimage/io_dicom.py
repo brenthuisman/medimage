@@ -43,11 +43,18 @@ def read(self,filename,**kwargs):
 				pa = pa.reshape(pa.shape[::-1])
 				pa = pa.reshape(tuple(reversed(pa.shape))).swapaxes(0, len(pa.shape) - 1)
 				self.imdata[:,:,i] = pa
+
 		try:
 			self.header['ElementSpacing'] = [float(dcm.PixelSpacing[0]), float(dcm.PixelSpacing[1]), float(dcm.SliceThickness)]
 			#[dcm.SliceThickness]+list(dcm.PixelSpacing[::-1])
 		except:
 			self.header['ElementSpacing'] = [float(dcm.PixelSpacing[0]), float(dcm.PixelSpacing[1])]
+
+		try:
+			a=np.diff(dcm.GridFrameOffsetVector)
+			print(a)
+		except:
+			pass
 
 		try:
 			self.mul(dcm.DoseGridScaling) #doses may have this
