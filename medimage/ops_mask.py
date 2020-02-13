@@ -8,7 +8,7 @@ class mask_class:
 	def tofake4d(self,binsInNewDim=250):
 		# TODO: remove?
 		#fake 4D that exploits an MHD-headertrick
-		if self.header['NDims'] is not 3:
+		if self.header['NDims'] != 3:
 			print("Can only generate 4D image from 3D image.",file=sys.stderr)
 			return
 		inraw = self.header['ElementDataFile'] #we will delete this value before we need to reuse

@@ -149,7 +149,7 @@ def read(self,infile):
 		compression = int(header['nki_compression'])
 	except:
 		pass #if not present or zero, then no compression.
-	if compression is not 0:
+	if compression != 0:
 		try:
 			#must calc how many bytes of compressed data there are.
 			image_data_offset = fid.tell()
@@ -181,7 +181,7 @@ def read(self,infile):
 		except:
 			raise NotImplementedError('This image has compressed imagedata, but the external nki_decomp library cannot be found.')
 
-	elif compression is 0:
+	elif compression == 0:
 		# external
 		fname = None
 		if 'variable 1 file' in list(header.keys()):

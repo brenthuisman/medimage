@@ -93,25 +93,26 @@ def read_sitk(self,filename):
 	# so yeah, BOTH seem to be needed...
 	self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
 	self.imdata = self.imdata.reshape(tuple(reversed(self.imdata.shape))).swapaxes(0, len(self.imdata.shape) - 1)
-	
+
 	self.header['NDims'] = len(self.imdata.shape)
 	self.header['DimSize'] = list(self.imdata.shape)
 
 
 def write(self,filename):
-	if SITK_PRESENT:
-		if str(self.imdata.dtype).startswith('float'):
-			print("The dicom file format does not support floating point data types.")
-			print("Multiplying all voxels by 100 and setting slope to 0.01 to preserve precision of a percentage.")
-			img=sitk.GetImageFromArray((self.imdata*100).astype(np.uint16))
-			img.SetMetaData("0028|1053","0.01") #slope
-			img.SetMetaData("0028|1052","0") #intercept
-		else:
-			img=sitk.GetImageFromArray(self.imdata)
-		img.SetSpacing(self.spacing())
-		img.SetOrigin(self.offset())
-		print("img.GetSpacing()",img.GetSpacing())
-		print("img.GetOrigin()",img.GetOrigin())
-		sitk.WriteImage(img,filename,False) #no compression
-	else:
-		raise ImportError("No SimpleITK present on this system, can't write dicom files...")
+	raise NotImplementedError("Can't write dicom files. See readme for explanation. Pull requests welcome!")
+	#if SITK_PRESENT:
+		#if str(self.imdata.dtype).startswith('float'):
+			#print("The dicom file format does not support floating point data types.")
+			#print("Multiplying all voxels by 100 and setting slope to 0.01 to preserve precision of a percentage.")
+			#img=sitk.GetImageFromArray((self.imdata*100).astype(np.uint16))
+			#img.SetMetaData("0028|1053","0.01") #slope
+			#img.SetMetaData("0028|1052","0") #intercept
+		#else:
+			#img=sitk.GetImageFromArray(self.imdata)
+		#img.SetSpacing(self.spacing())
+		#img.SetOrigin(self.offset())
+		#print("img.GetSpacing()",img.GetSpacing())
+		#print("img.GetOrigin()",img.GetOrigin())
+		#sitk.WriteImage(img,filename,False) #no compression
+	#else:
+		#raise ImportError("No SimpleITK present on this system, can't write dicom files...")

@@ -128,7 +128,7 @@ class math_class:
 
 	def scale_values(self,rangemin,rangemax):
 		''' Linear rescale of the pixelvalues to the provided interval. '''
-		self.map_values([[self.imdata.min(),self.imdata.max()][rangemin,rangemax]])
+		self.map_values([[self.imdata.min(),self.imdata.max()],[rangemin,rangemax]])
 
 	def map_values(self,table):
 		'''Map the imdata-values of this image using the table you supply. This table should be a list of two equally long lists, where the first list maps to the current imdata-values, and the second to where you want them mapped. This function interpolates linearly, and does NOT extrapolate.'''

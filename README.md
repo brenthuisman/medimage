@@ -1,10 +1,10 @@
 ## medimage
 
-This library supports r/w MetaImage (MHD,ITK), r/w AVSField (.xdr) and r/w Dicom images. XDR reading includes NKI compressed images (useful to work with your Elekta images). The `image` class is a thin wrapper around typed numpy array objects (the `.imdata` member) such that you can easily work with images in these data formats. Slicing, projections, mathematical operations, masking, stuff like that is very easy with numpy, so you can easily extend things to what you need.
+This library supports r/w MetaImage (MHD,ITK), r/w AVSField (.xdr) and read Dicom images. XDR reading includes NKI compressed images (useful to work with your Elekta images). The `image` class is a thin wrapper around typed numpy array objects (the `.imdata` member) such that you can easily work with images in these data formats. Slicing, projections, mathematical operations, masking, stuff like that is very easy with numpy, so you can easily extend things to what you need.
 
 Included are some basic mathematical operations, some masking functions and crop and resampling functions. Of particular interest perhaps are the DVH analysis function, and the distance to agreement calculation. This calculation is quite slow though. For [NKI decompression](https://gitlab.com/plastimatch/plastimatch/tree/master/libs/nkidecompress) I supply a 64bit Linux and Windows lib, if you need support for other platforms you can compile the function in `medimage/nki_decomp` yourself. This component is governed by its own license.
 
-Dicom write support *requires* `SimpleITK`, primarily because `pydicom` does not support dicom image write... Since you may not care, `medimage` package won't install `SimpleITK` for you and simply fail to save to dicom if `SimpleITK` is not found. *If* `SimpleITK` is found, it will *also* be used for dicom reading, because based on my limited testing, it's a bit more forgiving with the validity of input files.
+Dicom write is not supported right now. If it would, it would *require* `SimpleITK`, primarily because `pydicom` does not support dicom image write... SimpleITK write also only seems to produce usable dicoms files when updating an existing image, not when creating a new one from scratch.
 
 
 ## Motivation
@@ -17,11 +17,11 @@ I wanted to have a thin and pure Python wrapper around `numpy` that would allows
 
 You can now use pip!
 
-    $ pip(3) install medimage (--user)
+    $ pip3 install medimage (--user)
 
 Or clone/download this repo and install manually with:
 
-    $ python(3) setup.py install (--user)
+    $ python3 setup.py install (--user)
 
 Currently, the `pymedphys` component is NOT installed automatically, which is required when you are going to use the `compute_gamma` method. That is because it is a rather large package, and in developmental flux.
 
@@ -69,7 +69,7 @@ Apart from regular old cropping, the `.crop_as` method let's you 'crop' an image
 	ct = image.image('ct.dcm')
 	dose = image.image('dose.dcm')
 	ct.crop_as(dose)
-	ct.saveas('ct_dosegrid')
+	ct.saveas('ct_dosegrid.xdr')
 
 ### DVH parameters within a subregion for which you have a mask
 
@@ -112,10 +112,10 @@ Say you have a dose calculation and you want to have some DVH metrics (say, Dmax
 
  * numpy
  * pydicom
- * Optional (Dicom write): SimpleITK.
 
 ### Changelog
 
+ * 2020-02-13: v1.0.7:
  * 2019-10-08: v1.0.6: Bugfix, dicom write still incomplete.
  * 2019-10-08: v1.0.5: Dicom write
  * 2019-09-24: v1.0.4: New and much faster gamma computation (order of 5 minutes)
