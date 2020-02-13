@@ -49,12 +49,13 @@ def read(self,filename,**kwargs):
 			#[dcm.SliceThickness]+list(dcm.PixelSpacing[::-1])
 		except:
 			self.header['ElementSpacing'] = [float(dcm.PixelSpacing[0]), float(dcm.PixelSpacing[1])]
-
-		try:
-			a=np.diff(dcm.GridFrameOffsetVector)
-			print(a)
-		except:
-			pass
+			try:
+				a=np.diff(dcm.GridFrameOffsetVector)
+				b=np.unique(a)
+				if len(b) == 1:
+					self.header['ElementSpacing'].append(float(b))
+			except:
+				raise IOError("Nonlinear image opend: I don't handle this yet!")
 
 		try:
 			self.mul(dcm.DoseGridScaling) #doses may have this
