@@ -115,7 +115,7 @@ Say you have a dose calculation and you want to have some DVH metrics (say, Dmax
 
 ### Changelog
 
- * 2020-02-13: v1.0.7:
+ * 2020-02-13: v1.0.7: Bugfixes
  * 2019-10-08: v1.0.6: Bugfix, dicom write still incomplete.
  * 2019-10-08: v1.0.5: Dicom write
  * 2019-09-24: v1.0.4: New and much faster gamma computation (order of 5 minutes)
